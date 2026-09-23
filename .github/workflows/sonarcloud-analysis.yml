@@ -2,26 +2,11 @@ name: "SonarCloud Analysis"
 
 # This is best run as a standalone workflow, not as part of another workflow like CI
 # because of how GitHub understands the code scanning workflows in it's UI.
+# This derivative keeps upstream jobs for reference; only the owner can dispatch them.
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - '.github/workflows/sonarcloud-analysis.yml'
-      - 'sonar-project.properties'
-      - 'cmake/Libraries.cmake'
-      - 'CMakeLists.txt'
-      - 'src/**'
-      - '!src/res/**'
-      - '!src/unittests/**'
-  push:
-    branches: [master]
-    paths:
-      - '.github/workflows/codeql-analysis.yml'
-      - 'cmake/Libraries.cmake'
-      - 'CMakeLists.txt'
-      - 'src/**'
-      - '!src/res/**'
-      - '!src/unittests/**'
+
+permissions: read-all
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

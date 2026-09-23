@@ -1,27 +1,32 @@
-name: Feature request
-description: Had an idea how to improve Deskflow? Share it with us.
-type: "Triage [feature]"
+name: 功能建议
+description: 向 Deskflow FileCopy 维护者提出功能或体验改进建议。
 body:
   - type: markdown
     attributes:
-      value: Thanks for taking the time to help us improve Deskflow.
-
-  - type: textarea
-    id: request
-    attributes:
-      label: Feature Request
-      description: |
-        Please describe the feature you have in mind.
-    validations:
-      required: true
-
-  - type: input
-    id: votes
-    attributes:
-      label: Voting Instructions
-      description: Do not modify these instructions
       value: |
-        React with :+1: or :-1: to vote on this request
+        请先阅读[项目 README](https://github.com/EugeneEvan/deskflow-filecopy#readme)并检查已有 Issue。
+        当前文件复制扩展仅支持 Windows ↔ Windows。建议由仓库主人评估，不会自动合并或授予仓库写权限。
+  - type: textarea
+    id: problem
+    attributes:
+      label: 希望解决的问题
+      description: 描述具体使用场景、当前行为和受到的影响。
     validations:
       required: true
-
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 期望的行为
+      description: 说明希望用户如何操作、最终得到什么结果。
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 已考虑的替代方案
+      description: 如已有可行方法，请说明它的不足。
+  - type: textarea
+    id: context
+    attributes:
+      label: 平台与补充信息
+      description: 可提供 Windows 版本、文件规模等背景；不要上传凭据、完整环境配置或业务数据。

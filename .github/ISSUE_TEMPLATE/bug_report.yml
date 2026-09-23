@@ -1,111 +1,74 @@
-name: Bug report
-description: If you find a bug in Deskflow, please let us know so we can fix it.
-type: "Triage [bug]"
+name: 问题反馈
+description: 反馈 Deskflow FileCopy 的文件复制或相关回归问题。
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to help us improve Deskflow.
-
-        <b>Sanity checks</b>
-        > [!IMPORTANT]
-        > 1. Try the latest [continuous build](https://github.com/deskflow/deskflow/releases).
-        > 2. Wayland users, please review the [known issues](https://github.com/deskflow/deskflow/discussions/7499).
-        > 3. macOS users, if the app crashes, try [Apple's solution](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unknown-developer-mh40616/mac).
-        > 4. Search for existing issues and avoid creating duplicates.
-        > 5. Provide descriptive title for this issue.
-
+        这是 Deskflow FileCopy 非官方衍生项目的反馈入口。
+        请使用[本项目发布页](https://github.com/EugeneEvan/deskflow-filecopy/releases)的版本，并先阅读[使用方式与限制](https://github.com/EugeneEvan/deskflow-filecopy#readme)。上游 Deskflow 的安装包不包含本扩展。
+        请勿上传密码、Token、Cookie、证书私钥、完整环境配置或业务文件；日志和截图请先脱敏。
   - type: checkboxes
-    id: sanity-checks
+    id: checks
     attributes:
-      label: Before reporting a bug, please complete the sanity checks above.
-      description: This helps us triage and resolve issues more efficiently.
+      label: 提交前确认
       options:
-        - label: I have done the sanity checks, and my issue persists.
+        - label: 我确认问题发生在 Deskflow FileCopy，并已查找现有 Issue。
           required: true
-
+        - label: 我已阅读 README 中的平台、功能和缓存限制。
+          required: true
   - type: textarea
-    id: version
+    id: versions
     attributes:
-      label: Deskflow version info
-      description: Please paste only the Deskflow version info, accessible via the **Help** menu in the **About** dialog using the **Copy version info** button.
+      label: 两端版本与运行模式
+      description: 分别填写 Windows 版本、FileCopy 发布版本、帮助菜单中显示的 Deskflow 版本，以及服务端/客户端和 Desktop/Service 模式。无需提供真实计算机名或 IP。
       placeholder: |
-        Deskflow: 1.2.3.4 (deadc0de)
-        Qt: 3.2.1
-        System: Hannah Montana Linux (Workstation Edition)
-        Session: Unity (Compiz)
+        A：Windows 11，FileCopy 0.1.0，Deskflow 版本信息，服务端，Desktop
+        B：Windows 10，FileCopy 0.1.0，Deskflow 版本信息，客户端，Desktop
     validations:
       required: true
-
   - type: dropdown
-    id: build
+    id: distribution
     attributes:
-      label: Build types
-      description: What kind of builds are you running for all servers and clients?
-      multiple: true
+      label: 使用的程序包
       options:
-        - Official release (installer/package from GitHub releases)
-        - Community package (apt, dnf, pacman/aur, brew, etc.)
-        - Local developer build (built it myself)
-        - Other (please specify)
+        - 本仓库 Release 安装程序 EXE
+        - 本仓库 Release 便携 ZIP
+        - 自行编译
+        - 混用或其他来源（请在下方说明）
     validations:
       required: true
-
   - type: textarea
-    id: config
+    id: settings
     attributes:
-      label: Deskflow configuration
-      description: |
-        Please provide a very brief description of your configuration.
-        There is no need to provide operating system details here, as they are included when you paste the version info in the **Deskflow version info** section above.
-        If you're using Linux, please provide the name of the distribution.
-      placeholder: |
-        - Windows 11 server, Ubuntu client, and macOS 15 client
-        - Each computer has a single monitor
-        - Windows is in the center, Ubuntu is on the left, and macOS is on the right
+      label: 连接与文件复制设置
+      description: 文件复制问题请说明两端 TLS、文件复制开关及服务端剪贴板共享是否开启；其他回归可写不适用。
     validations:
       required: true
-
   - type: textarea
-    id: repro-steps
+    id: reproduction
     attributes:
-      label: What steps will reproduce the problem?
-      description: |
-        Please list the _numbered steps_ to reproduce the issue.
-        If you're not sure, please provide as much detail as possible.
+      label: 复现步骤
+      description: 按顺序说明操作，包括复制方向、切换时机以及何时粘贴。
       placeholder: |
-        1. Start Deskflow
-        2. Click 'Configure Server'
-        3. Click 'Apply'
-
+        1. 在 A 复制……
+        2. B 显示……
+        3. 在 B 的目标文件夹按 Ctrl+V……
+    validations:
+      required: true
   - type: textarea
-    id: logs
+    id: expected-actual
     attributes:
-      label: Log output
-      description: |
-        Please copy and paste any relevant log output.
-        This will be automatically formatted into code, so no need for backticks.
-      value: |
-        <details><summary><h3> Show log </h3></summary>
-
-        <!-- Please paste your log into the code block below -->
-        ```ceylon
-
-        ```
-
-        </details>
-
+      label: 预期结果与实际结果
+      description: 请写出完整错误提示，区分未传输、传输失败、缓存已就绪但粘贴失败等情况。
+    validations:
+      required: true
   - type: textarea
-    id: additional-info
+    id: files
     attributes:
-      label: Additional information
-      description: |
-        Please provide any additional information that may help us understand the issue.
-        This could include screenshots, error messages, or anything else you think is relevant.
-        - Any ideas about what maybe causing the problem?
-        - Any workarounds that you've discovered?
-        - What other apps are you running?
-        - Does the issue stop you using Deskflow entirely?
-        - Did restarting Deskflow or the computer help?
-        - Are the locales matching across all your systems?
-        - Anything else you can think of?
+      label: 文件与目录情况
+      description: 说明数量、总大小、是否有空目录/中文路径/同名顶层项目/符号链接；不需要上传原始文件。
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: 脱敏日志与补充信息
+      description: 仅提供必要时间段的日志或可复现样例，不要粘贴完整设置文件、TLS 私钥或业务内容。

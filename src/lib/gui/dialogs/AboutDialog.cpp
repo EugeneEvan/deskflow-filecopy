@@ -30,7 +30,12 @@ AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent), ui{std::make_unique
   connect(ui->btnCopyVersion, &QPushButton::clicked, this, &AboutDialog::copyVersionText);
 
   ui->lblVersion->setText(kDisplayVersion);
-  ui->lblDescription->setText(kAppDescription);
+  setWindowTitle(tr("About Deskflow FileCopy"));
+  ui->lblDescription->setText(QStringLiteral(
+      "Deskflow FileCopy 0.1.0\n"
+      "Windows file copy, based on Deskflow\n"
+      "Independent derivative maintained by EugeneEvan"
+  ));
   ui->lblCopyright->setText(kCopyright);
 
   // Use non-breaking space in each awesome dev name so names are not split across lines.
@@ -49,7 +54,7 @@ AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent), ui{std::make_unique
 
 void AboutDialog::copyVersionText() const
 {
-  QString infoString = QStringLiteral("%1: %2 (%3)\nQt: %4\nSystem: %5")
+  QString infoString = QStringLiteral("Deskflow FileCopy 0.1.0\n%1: %2 (%3)\nQt: %4\nSystem: %5")
                            .arg(kAppName, kVersion, kVersionGitSha, qVersion(), QSysInfo::prettyProductName());
   if (Settings::isPortableMode()) {
     infoString.append(QStringLiteral("\nPortable Mode"));

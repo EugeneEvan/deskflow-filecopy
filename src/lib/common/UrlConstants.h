@@ -14,11 +14,14 @@
 const auto kOrgDomain = QStringLiteral("deskflow.org");
 
 const auto kUrlSourceQuery = QStringLiteral("source=gui");
-const auto kUrlApp = QStringLiteral("https://%1").arg(kOrgDomain);
-const auto kUrlHelp = QStringLiteral("%1/help?%2").arg(kUrlApp, kUrlSourceQuery);
-const auto kUrlDownload = QStringLiteral("%1/download?%2").arg(kUrlApp, kUrlSourceQuery);
-const auto kUrlWiki = QStringLiteral("%1/wiki?%2").arg(kUrlApp, kUrlSourceQuery);
-const auto kUrlUpdateCheck = QStringLiteral("https://api.%1/version").arg(kOrgDomain);
+// Keep the settings domain above stable; this derivative has its own releases.
+const auto kUrlApp = QStringLiteral("https://github.com/EugeneEvan/deskflow-filecopy");
+const auto kUrlHelp = QStringLiteral("%1/blob/main/README.md").arg(kUrlApp);
+const auto kUrlDownload = QStringLiteral("%1/releases").arg(kUrlApp);
+const auto kUrlWiki = kUrlHelp;
+const auto kUrlUpdateCheck = QStringLiteral(
+    "https://raw.githubusercontent.com/EugeneEvan/deskflow-filecopy/main/deploy/windows/latest-version.txt"
+);
 
 #if defined(Q_OS_LINUX)
 const auto kUrlGnomeTrayFix = QStringLiteral("https://extensions.gnome.org/extension/615/appindicator-support/");

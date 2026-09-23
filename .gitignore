@@ -49,3 +49,8 @@ CMakeFiles/*
 # Ai helperfilers
 **/[cC]laude.[mM][dD]
 **/CLAUDE.[mM][dD]
+
+# Local agent state and machine-specific remote troubleshooting helpers
+/.claude/
+/.codex/
+/remote-tools-*/

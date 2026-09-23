@@ -4,12 +4,11 @@
 
 name: Continuous Integration
 
+# This derivative keeps upstream jobs for reference; only the owner can dispatch them.
 on:
-  push:
-    branches: [master]
-    tags:
-      - "v*"
-  pull_request:
+  workflow_dispatch:
+
+permissions: read-all
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -85,7 +84,7 @@ jobs:
     name: ${{ matrix.target.name }}
     runs-on: ${{ matrix.target.runs-on }}
     permissions:
-      contents: write
+      contents: read
     container: ${{ matrix.target.container }}
     timeout-minutes: ${{ matrix.target.timeout }}
     strategy:
@@ -465,7 +464,8 @@ jobs:
 
   release:
     needs: ci-passed
-    if: (github.ref == 'refs/heads/master') || (contains(github.ref, '/tags/v'))
+    # FileCopy releases are published by the repository owner, never by this inherited job.
+    if: github.repository == 'deskflow/deskflow' && ((github.ref == 'refs/heads/master') || (contains(github.ref, '/tags/v')))
     runs-on: ubuntu-latest
 
     steps:

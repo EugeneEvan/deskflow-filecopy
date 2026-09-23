@@ -9,11 +9,11 @@
 # isn't possible due to the lower security context that the CI workflow runs in.
 name: CI comment
 
+# This derivative keeps upstream jobs for reference; only the owner can dispatch them.
 on:
-  workflow_run:
-    workflows: ["Continuous Integration"]
-    types:
-      - completed
+  workflow_dispatch:
+
+permissions: read-all
 
 jobs:
   summary:

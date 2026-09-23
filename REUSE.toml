@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: MIT
 
 version = 1
-SPDX-PackageName = "deskflow"
-SPDX-PackageSupplier = "Deskflow Devs"
-SPDX-PackageDownloadLocation = "https://github.com/deskflow/deskflow"
+SPDX-PackageName = "deskflow-filecopy"
+SPDX-PackageSupplier = "EugeneEvan; based on Deskflow Developers"
+SPDX-PackageDownloadLocation = "https://github.com/EugeneEvan/deskflow-filecopy"
 
 [[annotations]]
 path = [
@@ -65,3 +65,20 @@ path = [
 ]
 SPDX-FileCopyrightText = "Deskflow Developers"
 SPDX-License-Identifier = "GPL-2.0-only WITH LicenseRef-OpenSSL-Exception"
+
+[[annotations]]
+path = [
+   "src/apps/res/deskflow.ico"
+ , "src/apps/res/icons/deskflow-light/apps/64/org.deskflow.deskflow.svg"
+ , "src/apps/res/icons/deskflow-light/apps/64/org.deskflow.deskflow-symbolic.svg"
+ , "src/apps/res/icons/deskflow-dark/apps/64/org.deskflow.deskflow.svg"
+ , "src/apps/res/icons/deskflow-dark/apps/64/org.deskflow.deskflow-symbolic.svg"
+]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 Deskflow FileCopy contributors"
+SPDX-License-Identifier = "GPL-2.0-only"
+
+[[annotations]]
+path = "deploy/windows/latest-version.txt"
+SPDX-FileCopyrightText = "2026 Deskflow FileCopy contributors"
+SPDX-License-Identifier = "MIT"

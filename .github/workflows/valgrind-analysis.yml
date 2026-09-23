@@ -1,8 +1,11 @@
 name: "Valgrind Analysis"
 
+# This derivative keeps upstream jobs for reference; only the owner can dispatch them.
 on:
   workflow_dispatch:
   workflow_call:
+
+permissions: read-all
 
 jobs:
   valgrind-analysis:
