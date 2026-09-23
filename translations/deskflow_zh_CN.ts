@@ -51,6 +51,10 @@ p, li { white-space: pre-wrap; }
         <source>&amp;Close</source>
         <translation>关闭(&amp;C)</translation>
     </message>
+    <message>
+        <source>About Deskflow FileCopy</source>
+        <translation>关于 Deskflow FileCopy</translation>
+    </message>
 </context>
 <context>
     <name>ActionDialog</name>

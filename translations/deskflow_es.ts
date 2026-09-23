@@ -51,6 +51,10 @@ p, li { white-space: pre-wrap; }
         <source>&amp;Close</source>
         <translation type="unfinished">&amp;Cerrar</translation>
     </message>
+    <message>
+        <source>About Deskflow FileCopy</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>ActionDialog</name>
