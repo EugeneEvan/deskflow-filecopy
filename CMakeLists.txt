@@ -187,7 +187,10 @@ elseif(APPLE)
     set(DEPLOY_TOOL macdeployqt)
 endif()
 
-if (WIN32 OR APPLE)
+# The deploy tool is only required when building the installer; skip the
+# check for plain dev builds (where windeployqt may be unavailable, e.g.
+# newer Qt 6 releases that removed the standalone windeployqt tool).
+if ((WIN32 OR APPLE) AND BUILD_INSTALLER)
   find_program(DEPLOYQT ${DEPLOY_TOOL})
   if(DEPLOYQT STREQUAL "DEPLOYQT-NOTFOUND")
     message(FATAL_ERROR "Unable to locate the Qt Deploy Tool: \"${DEPLOY_TOOL}\"")

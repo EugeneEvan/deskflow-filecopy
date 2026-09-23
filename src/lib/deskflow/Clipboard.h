@@ -29,7 +29,7 @@ public:
   Extract marshalled clipboard data and store it in this clipboard.
   Sets the clipboard time to \c time.
   */
-  void unmarshall(const std::string &data, Time time);
+  void unmarshall(const std::string &data, Time time, bool includeFiles = true);
 
   //@}
   //! @name accessors
@@ -40,7 +40,7 @@ public:
   Merge this clipboard's data into a single buffer that can be later
   unmarshalled to restore the clipboard and return the buffer.
   */
-  std::string marshall() const;
+  std::string marshall(bool includeFiles = true) const;
 
   //@}
 

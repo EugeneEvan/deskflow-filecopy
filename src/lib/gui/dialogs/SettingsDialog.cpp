@@ -91,6 +91,7 @@ void SettingsDialog::changeEvent(QEvent *e)
   if (e->type() == QEvent::LanguageChange) {
     ui->retranslateUi(this);
     updateText();
+    updateTlsControlsEnabled();
   }
 }
 
@@ -127,6 +128,7 @@ void SettingsDialog::initConnections() const
   connect(ui->comboLanguage, &QComboBox::currentIndexChanged, this, &SettingsDialog::setButtonBoxEnabledButtons);
   connect(ui->rbAutoHide, &QRadioButton::toggled, this, &SettingsDialog::setButtonBoxEnabledButtons);
   connect(ui->cbPreventSleep, &QCheckBox::toggled, this, &SettingsDialog::setButtonBoxEnabledButtons);
+  connect(ui->cbFileTransfer, &QCheckBox::toggled, this, &SettingsDialog::setButtonBoxEnabledButtons);
   connect(ui->rbCloseToTray, &QRadioButton::toggled, this, &SettingsDialog::setButtonBoxEnabledButtons);
   connect(ui->cbElevateDaemon, &QCheckBox::toggled, this, &SettingsDialog::setButtonBoxEnabledButtons);
   connect(ui->cbAutoUpdate, &QCheckBox::toggled, this, &SettingsDialog::setButtonBoxEnabledButtons);
@@ -229,6 +231,7 @@ void SettingsDialog::accept()
   Settings::setValue(Settings::Gui::Autohide, ui->rbAutoHide->isChecked());
   Settings::setValue(Settings::Gui::AutoUpdateCheck, ui->cbAutoUpdate->isChecked());
   Settings::setValue(Settings::Core::PreventSleep, ui->cbPreventSleep->isChecked());
+  Settings::setValue(Settings::Core::FileTransferEnabled, ui->cbFileTransfer->isChecked());
   Settings::setValue(Settings::Security::Certificate, ui->lineTlsCertPath->text());
   Settings::setValue(Settings::Security::KeySize, ui->comboTlsKeyLength->currentText().toInt());
   Settings::setValue(Settings::Security::TlsEnabled, ui->groupSecurity->isChecked());
@@ -262,6 +265,9 @@ void SettingsDialog::loadFromConfig()
   ui->groupLogToFile->setChecked(Settings::value(Settings::Log::ToFile).toBool());
   ui->lineLogFilename->setText(Settings::value(Settings::Log::File).toString());
   ui->cbPreventSleep->setChecked(Settings::value(Settings::Core::PreventSleep).toBool());
+  ui->cbFileTransfer->setChecked(Settings::value(Settings::Core::FileTransferEnabled).toBool());
+  ui->cbFileTransfer->setVisible(deskflow::platform::isWindows());
+  ui->lblFileTransferInfo->setVisible(deskflow::platform::isWindows());
   ui->cbElevateDaemon->setChecked(Settings::value(Settings::Daemon::Elevate).toBool());
   ui->cbAutoUpdate->setChecked(Settings::value(Settings::Gui::AutoUpdateCheck).toBool());
   ui->cbGuiDebug->setChecked(Settings::value(Settings::Log::GuiDebug).toBool());
@@ -337,6 +343,20 @@ void SettingsDialog::updateTlsControlsEnabled()
   ui->widgetTlsCert->setEnabled(enabled);
   ui->btnTlsRegenCert->setEnabled(enabled);
   ui->cbRequireClientCert->setEnabled(enabled && !isClientMode());
+  // Preserve the user's preference when TLS is toggled; the core enforces both prerequisites.
+  ui->cbFileTransfer->setEnabled(writable && deskflow::platform::isWindows());
+  if (!tlsChecked) {
+    ui->lblFileTransferInfo->setText(tr("File copy is unavailable: enable TLS encryption on both computers."));
+  } else if (!isClientMode() && !Settings::value(Settings::Server::EnableClipboard).toBool()) {
+    ui->lblFileTransferInfo->setText(
+        tr("File copy is unavailable: enable clipboard sharing in the server configuration.")
+    );
+  } else {
+    ui->lblFileTransferInfo->setText(
+        tr("Enable file copy and TLS on both computers, and clipboard sharing on the server. Files are cached first; "
+           "press Ctrl+V in the destination folder when ready.")
+    );
+  }
 }
 
 bool SettingsDialog::isClientMode() const
@@ -429,6 +449,7 @@ bool SettingsDialog::isModified() const
       (ui->lineLogFilename->text() != Settings::value(Settings::Log::File).toString()) ||
       (ui->rbAutoHide->isChecked() != Settings::value(Settings::Gui::Autohide).toBool()) ||
       (ui->cbPreventSleep->isChecked() != Settings::value(Settings::Core::PreventSleep).toBool()) ||
+      (ui->cbFileTransfer->isChecked() != Settings::value(Settings::Core::FileTransferEnabled).toBool()) ||
       (ui->rbCloseToTray->isChecked() != Settings::value(Settings::Gui::CloseToTray).toBool()) ||
       (ui->cbElevateDaemon->isChecked() != Settings::value(Settings::Daemon::Elevate).toBool()) ||
       (ui->cbAutoUpdate->isChecked() != Settings::value(Settings::Gui::AutoUpdateCheck).toBool()) ||
@@ -464,6 +485,7 @@ bool SettingsDialog::isDefault() const
       (ui->lineLogFilename->text() == Settings::defaultValue(Settings::Log::File).toString()) &&
       (ui->rbAutoHide->isChecked() == Settings::defaultValue(Settings::Gui::Autohide).toBool()) &&
       (ui->cbPreventSleep->isChecked() == Settings::defaultValue(Settings::Core::PreventSleep).toBool()) &&
+      (ui->cbFileTransfer->isChecked() == Settings::defaultValue(Settings::Core::FileTransferEnabled).toBool()) &&
       (ui->rbCloseToTray->isChecked() == Settings::defaultValue(Settings::Gui::CloseToTray).toBool()) &&
       (ui->cbElevateDaemon->isChecked() == Settings::defaultValue(Settings::Daemon::Elevate).toBool()) &&
       (ui->cbAutoUpdate->isChecked() == Settings::defaultValue(Settings::Gui::AutoUpdateCheck).toBool()) &&
@@ -493,6 +515,7 @@ void SettingsDialog::resetToDefault()
   ui->groupLogToFile->setChecked(Settings::defaultValue(Settings::Log::ToFile).toBool());
   ui->lineLogFilename->setText(Settings::defaultValue(Settings::Log::File).toString());
   ui->cbPreventSleep->setChecked(Settings::defaultValue(Settings::Core::PreventSleep).toBool());
+  ui->cbFileTransfer->setChecked(Settings::defaultValue(Settings::Core::FileTransferEnabled).toBool());
   ui->cbElevateDaemon->setChecked(Settings::defaultValue(Settings::Daemon::Elevate).toBool());
   ui->cbAutoUpdate->setChecked(Settings::defaultValue(Settings::Gui::AutoUpdateCheck).toBool());
   ui->cbGuiDebug->setChecked(Settings::defaultValue(Settings::Log::GuiDebug).toBool());

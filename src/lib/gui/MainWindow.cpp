@@ -36,19 +36,24 @@
 #include <QCloseEvent>
 #include <QDesktopServices>
 #include <QFileDialog>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QLocalServer>
 #include <QLocalSocket>
+#include <QLocale>
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QNetworkAccessManager>
 #include <QNetworkInterface>
+#include <QProgressBar>
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
 #include <QScreen>
 #include <QScrollBar>
 
+#include <limits>
 #include <memory>
 
 #if defined(Q_OS_MACOS)
@@ -65,6 +70,8 @@ MainWindow::MainWindow()
       m_daemonIpcClient{new ipc::DaemonIpcClient(this)},
       m_logDock{new LogDock(this)},
       m_statusBar{new StatusBar(this)},
+      m_fileTransferProgress{new QProgressBar(this)},
+      m_cancelFileTransfer{new QPushButton(this)},
       m_menuFile{new QMenu(this)},
       m_menuEdit{new QMenu(this)},
       m_menuView{new QMenu(this)},
@@ -229,6 +236,15 @@ void MainWindow::setupControls()
     ui->btnSaveServerConfig->setIconSize(QSize(22, 22));
   }
   setStatusBar(m_statusBar);
+  m_fileTransferProgress->setObjectName(QStringLiteral("fileTransferProgress"));
+  m_fileTransferProgress->setRange(0, 1000);
+  m_fileTransferProgress->setFixedWidth(220);
+  m_fileTransferProgress->setTextVisible(true);
+  m_fileTransferProgress->hide();
+  m_cancelFileTransfer->setObjectName(QStringLiteral("cancelFileTransfer"));
+  m_cancelFileTransfer->hide();
+  m_statusBar->addPermanentWidget(m_fileTransferProgress);
+  m_statusBar->addPermanentWidget(m_cancelFileTransfer);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -278,6 +294,12 @@ void MainWindow::connectSlots()
   connect(&m_coreProcess, &CoreProcess::retryIn, this, &MainWindow::updateTimeoutDelay);
   connect(&m_coreProcess, &CoreProcess::peerFingerprint, this, &MainWindow::handlePeerFingerprint);
   connect(&m_coreProcess, &CoreProcess::missingKeyboardLayouts, this, &MainWindow::handleMissingKeyboardLayouts);
+  connect(&m_coreProcess, &CoreProcess::fileTransferStatusChanged, this, &MainWindow::handleFileTransferStatus);
+  connect(m_cancelFileTransfer, &QPushButton::clicked, this, [this] {
+    m_coreProcess.cancelFileTransfer();
+    m_cancelFileTransfer->setEnabled(false);
+    m_fileTransferProgress->setFormat(tr("Cancelling file transfer..."));
+  });
 
   if (Settings::value(Settings::Gui::AutoStartCore).toBool()) {
     connect(ui->btnToggleCore, &QPushButton::clicked, m_actionStopCore, &QAction::trigger, Qt::UniqueConnection);
@@ -944,9 +966,86 @@ void MainWindow::updateStatus()
   m_statusBar->setStatus(connection, process, isServer);
 }
 
+void MainWindow::handleFileTransferStatus(const QString &statusJson)
+{
+  QJsonParseError parseError;
+  const auto document = QJsonDocument::fromJson(statusJson.toUtf8(), &parseError);
+  if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
+    qWarning("invalid file transfer status from core ipc");
+    return;
+  }
+
+  const auto status = document.object();
+  const auto id = status.value(QStringLiteral("id")).toString();
+  const auto state = status.value(QStringLiteral("state")).toString();
+  const bool active = state == "preparing" || state == "receiving" || state == "sending";
+  if (!active && state != "ready" && state != "completed" && state != "cancelled" && state != "failed") {
+    qWarning("unknown file transfer state from core ipc");
+    return;
+  }
+
+  const bool changed = id != m_fileTransferId || state != m_fileTransferState;
+  m_fileTransferId = id;
+  m_fileTransferState = state;
+  m_fileTransferProgress->show();
+  m_cancelFileTransfer->setVisible(active);
+  if (changed)
+    m_cancelFileTransfer->setEnabled(active);
+
+  QString message;
+  QString detail;
+  if (state == "preparing") {
+    message = tr("Preparing files...");
+    m_fileTransferProgress->setValue(0);
+  } else if (state == "receiving" || state == "sending") {
+    // QString counters avoid precision loss when the core serializes 64-bit byte counts.
+    const auto received = status.value(QStringLiteral("received")).toVariant().toULongLong();
+    const auto total = status.value(QStringLiteral("total")).toVariant().toULongLong();
+    const auto ratio = total == 0 ? 0.0 : qMin(1.0, static_cast<double>(received) / static_cast<double>(total));
+    m_fileTransferProgress->setValue(static_cast<int>(ratio * 1000));
+    message = state == "sending" ? tr("Sending files %p%") : tr("Receiving files %p%");
+    const auto formatBytes = [](quint64 bytes) {
+      return QLocale().formattedDataSize(static_cast<qint64>(qMin<quint64>(bytes, std::numeric_limits<qint64>::max())));
+    };
+    detail = (state == "sending" ? tr("Sent %1 / %2. Wait until the receiving computer is ready before pasting.")
+                                 : tr("Received %1 / %2. Wait until the transfer finishes before pasting."))
+                 .arg(formatBytes(received), formatBytes(total));
+  } else if (state == "ready") {
+    m_fileTransferProgress->setValue(1000);
+    message = tr("Files ready to paste");
+    detail = tr("Files received. Press Ctrl+V in the destination folder to paste.");
+  } else if (state == "completed") {
+    m_fileTransferProgress->setValue(1000);
+    message = tr("Files sent");
+    detail = tr("Files sent. Paste on the receiving computer when it reports that files are ready.");
+  } else if (state == "cancelled") {
+    message = tr("File transfer cancelled");
+    detail = status.value(QStringLiteral("error")).toString();
+  } else {
+    message = tr("File transfer failed");
+    detail = status.value(QStringLiteral("error")).toString();
+  }
+
+  m_fileTransferProgress->setFormat(message);
+  m_fileTransferProgress->setAccessibleName(message);
+  m_fileTransferProgress->setToolTip(detail.isEmpty() ? message : detail);
+  if (changed && (state == "ready" || state == "failed")) {
+    m_trayIcon->showMessage(
+        message, detail.isEmpty() ? message : detail,
+        state == "failed" ? QSystemTrayIcon::Warning : QSystemTrayIcon::Information
+    );
+  }
+}
+
 void MainWindow::coreProcessStateChanged(ProcessState state)
 {
   using enum ProcessState;
+  if (state == Stopped &&
+      (m_fileTransferState == "preparing" || m_fileTransferState == "receiving" || m_fileTransferState == "sending")) {
+    m_fileTransferState = QStringLiteral("failed");
+    m_fileTransferProgress->setFormat(tr("File transfer interrupted"));
+    m_cancelFileTransfer->hide();
+  }
   updateStatus();
   if (state == Started) {
     qDebug() << "recording that core has started";
@@ -1049,6 +1148,7 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 
 void MainWindow::updateText()
 {
+  m_cancelFileTransfer->setText(tr("Cancel transfer"));
   m_menuFile->setTitle(tr("&File"));
   m_menuEdit->setTitle(tr("&Edit"));
   m_menuView->setTitle(tr("&View"));

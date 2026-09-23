@@ -12,6 +12,8 @@
 #include "base/Log.h"
 #include "deskflow/AppUtil.h"
 #include "deskflow/DeskflowException.h"
+#include "deskflow/FileTransferBridge.h"
+#include "deskflow/FileTransferProtocol.h"
 #include "deskflow/IPlatformScreen.h"
 #include "deskflow/OptionTypes.h"
 #include "deskflow/PacketStreamFilter.h"
@@ -22,6 +24,7 @@
 #include "net/TCPSocket.h"
 #include "server/ClientListener.h"
 #include "server/ClientProxy.h"
+#include "server/ClientProxyFileTransfer.h"
 #include "server/ClientProxyUnknown.h"
 #include "server/PrimaryClient.h"
 
@@ -493,8 +496,22 @@ void Server::switchScreen(BaseClientProxy *dst, int32_t x, int32_t y, bool forSc
     m_active->enter(x, y, m_seqNum, m_primaryClient->getToggleMask(), forScreensaver);
 
     if (m_enableClipboard) {
+      bool receivingFilesOnPrimary = false;
+      if (m_active == m_primaryClient) {
+        const auto owner = m_clients.find(m_clipboards[kClipboardClipboard].m_clipboardOwner);
+        if (owner != m_clients.end()) {
+          const auto *transfer = dynamic_cast<ClientProxyFileTransfer *>(owner->second);
+          receivingFilesOnPrimary = transfer != nullptr && transfer->hasActiveFileTransfer();
+        }
+      }
       // send the clipboard data to new active screen
       for (ClipboardID id = 0; id < kClipboardEnd; ++id) {
+        // Windows Clipboard and Selection share one native clipboard.
+        // Reapplying either empty cache would change its sequence number
+        // and cancel the incoming files while switching back to primary.
+        if (receivingFilesOnPrimary) {
+          continue;
+        }
         // Hackity hackity hack
         if (m_clipboards[id].m_clipboard.marshall().size() > (m_maximumClipboardSize * 1024)) {
           continue;
@@ -1189,6 +1206,13 @@ void Server::handleClipboardGrabbed(const Event &event, BaseClientProxy *grabber
   clipboard.m_clipboardOwner = getName(grabber);
   clipboard.m_clipboardSeqNum = info->m_sequenceNumber;
 
+  if (info->m_id == kClipboardClipboard) {
+    for (const auto &[name, peer] : m_clients) {
+      if (auto *transfer = dynamic_cast<ClientProxyFileTransfer *>(peer))
+        transfer->sourceClipboardChanged();
+    }
+  }
+
   // clear the clipboard data (since it's not known at this point)
   if (clipboard.m_clipboard.open(0)) {
     clipboard.m_clipboard.empty();
@@ -1210,6 +1234,19 @@ void Server::handleClipboardGrabbed(const Event &event, BaseClientProxy *grabber
   if (grabber == m_primaryClient && m_active != m_primaryClient) {
     LOG_DEBUG("clipboard grabbed while active screen was changed, resending clipboard data");
     onClipboardChanged(m_primaryClient, info->m_id, clipboard.m_clipboardSeqNum);
+  } else if (grabber == m_primaryClient && info->m_id == kClipboardClipboard && canTransferFiles()) {
+    // Prefetch local file selections while the user is still on this
+    // screen. Received caches are never offered from a remote owner.
+    Clipboard selection;
+    if (m_primaryClient->getClipboard(info->m_id, &selection) && deskflow::filetransfer::containsFiles(&selection)) {
+      for (const auto &[name, peer] : m_clients) {
+        auto *transfer = dynamic_cast<ClientProxyFileTransfer *>(peer);
+        if (transfer != nullptr && transfer->canTransferFiles()) {
+          onClipboardChanged(m_primaryClient, info->m_id, clipboard.m_clipboardSeqNum);
+          transfer->setClipboard(info->m_id, &clipboard.m_clipboard);
+        }
+      }
+    }
   }
 }
 
@@ -1477,6 +1514,41 @@ void Server::onClipboardChanged(const BaseClientProxy *sender, ClipboardID id, u
 
   // send the new clipboard to the active screen
   m_active->setClipboard(id, &clipboard.m_clipboard);
+}
+
+bool Server::canTransferFiles() const
+{
+  return m_enableClipboard && m_maximumClipboardSize != 0 && m_clients.size() == 2 &&
+         deskflow::FileTransferBridge::enabled();
+}
+
+bool Server::publishTransferredFiles(const BaseClientProxy *sender, const QStringList &paths)
+{
+  auto &clipboard = m_clipboards[kClipboardClipboard];
+  const auto *transfer = dynamic_cast<const ClientProxyFileTransfer *>(sender);
+  if (!canTransferFiles() || !m_clientSet.contains(const_cast<BaseClientProxy *>(sender)) || transfer == nullptr ||
+      !transfer->canTransferFiles() || !deskflow::FileTransferBridge::publishFiles(m_screen, paths))
+    return false;
+  // An inactive secondary can copy files with an older screen-entry sequence,
+  // so its legacy CCLP may have been ignored. The negotiated file transfer
+  // claims ownership only after publication; its bridge has already checked
+  // that the native clipboard has not changed since Begin. Keep the current
+  // sequence so stale legacy text updates are still rejected.
+  clipboard.m_clipboardOwner = getName(sender);
+  m_primaryClient->getClipboard(kClipboardClipboard, &clipboard.m_clipboard);
+  clipboard.m_clipboardData = clipboard.m_clipboard.marshall();
+  m_primaryClient->setClipboardDirty(kClipboardClipboard, false);
+#ifdef Q_OS_WIN
+  // Both logical clipboard IDs address the same native Windows clipboard.
+  // A later screen switch must not reapply the stale empty Selection cache.
+  auto &selection = m_clipboards[kClipboardSelection];
+  Clipboard::copy(&selection.m_clipboard, &clipboard.m_clipboard);
+  selection.m_clipboardData = clipboard.m_clipboardData;
+  selection.m_clipboardOwner = clipboard.m_clipboardOwner;
+  selection.m_clipboardSeqNum = clipboard.m_clipboardSeqNum;
+  m_primaryClient->setClipboardDirty(kClipboardSelection, false);
+#endif
+  return true;
 }
 
 void Server::onScreensaver(bool activated)

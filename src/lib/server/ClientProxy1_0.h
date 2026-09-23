@@ -65,6 +65,13 @@ protected:
   virtual void addHeartbeatTimer();
   virtual void removeHeartbeatTimer();
   virtual bool recvClipboard();
+  virtual void onRemoteClipboardChanged(ClipboardID)
+  {
+  }
+  uint32_t getCurrentMessageSize() const
+  {
+    return m_currentMessageSize;
+  }
 
 private:
   void disconnect();
@@ -100,4 +107,5 @@ private:
   EventQueueTimer *m_heartbeatTimer = nullptr;
   MessageParser m_parser = &ClientProxy1_0::parseHandshakeMessage;
   IEventQueue *m_events;
+  uint32_t m_currentMessageSize = 0;
 };

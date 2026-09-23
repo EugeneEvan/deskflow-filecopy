@@ -15,6 +15,30 @@ void ClipboardTests::initTestCase()
   m_log.setFilter(LogLevel::Level::Verbose);
 }
 
+void ClipboardTests::networkClipboardExcludesLocalFiles()
+{
+  Clipboard source;
+  QVERIFY(source.open(0));
+  source.add(IClipboard::Format::Text, "ordinary text");
+  source.add(IClipboard::Format::Files, "C:\\private\\source.txt");
+  source.close();
+  const auto wire = source.marshall(false);
+  QVERIFY(wire.find("private") == std::string::npos);
+  Clipboard restored;
+  restored.unmarshall(wire, 0);
+  QVERIFY(restored.open(0));
+  QCOMPARE(restored.get(IClipboard::Format::Text), "ordinary text");
+  QVERIFY(!restored.has(IClipboard::Format::Files));
+  restored.close();
+  // A peer injecting a Files slot into legacy DCLP cannot place arbitrary
+  // remote-supplied paths on our native clipboard.
+  restored.unmarshall(source.marshall(), 0, false);
+  QVERIFY(restored.open(0));
+  QVERIFY(!restored.has(IClipboard::Format::Files));
+  QCOMPARE(restored.get(IClipboard::Format::Text), "ordinary text");
+  restored.close();
+}
+
 void ClipboardTests::basicFunction()
 {
   Clipboard clipboard;

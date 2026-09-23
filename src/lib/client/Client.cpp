@@ -7,6 +7,7 @@
  */
 
 #include "client/Client.h"
+#include "deskflow/FileTransferBridge.h"
 
 #include "arch/Arch.h"
 #include "base/IEventQueue.h"
@@ -14,10 +15,12 @@
 #include "client/ServerProxy.h"
 #include "client/ServerProxy1_7.h"
 #include "client/ServerProxy1_8.h"
+#include "client/ServerProxyFileTransfer.h"
 #include "common/NetworkProtocol.h"
 #include "common/Settings.h"
 #include "deskflow/Clipboard.h"
 #include "deskflow/DeskflowException.h"
+#include "deskflow/FileTransferProtocol.h"
 #include "deskflow/IPlatformScreen.h"
 #include "deskflow/PacketStreamFilter.h"
 #include "deskflow/ProtocolTypes.h"
@@ -259,6 +262,16 @@ void Client::setClipboard(ClipboardID id, const IClipboard *clipboard)
   m_sentClipboard[id] = false;
 }
 
+bool Client::publishTransferredFiles(const QStringList &paths)
+{
+  if (!m_enableClipboard || m_maximumClipboardSize == 0 || m_ownClipboard[kClipboardClipboard] ||
+      !deskflow::FileTransferBridge::publishFiles(m_screen, paths))
+    return false;
+  m_ownClipboard[kClipboardClipboard] = false;
+  m_sentClipboard[kClipboardClipboard] = false;
+  return true;
+}
+
 void Client::grabClipboard(ClipboardID id)
 {
   m_screen->grabClipboard(id);
@@ -484,7 +497,7 @@ bool Client::setupScreen(int16_t protocolMinor)
     m_server = new ServerProxy1_7(this, m_stream, m_events);
     break;
   case 8:
-    m_server = new ServerProxy1_8(this, m_stream, m_events);
+    m_server = new ServerProxyFileTransfer(this, m_stream, m_events);
     break;
   default:
     break;
@@ -660,9 +673,18 @@ void Client::handleClipboardGrabbed(const Event &event)
   m_sentClipboard[info->m_id] = false;
   m_timeClipboard[info->m_id] = 0;
 
-  // if we're not the active screen then send the clipboard now,
-  // otherwise we'll wait until we leave.
-  if (!m_active) {
+  // Files start caching immediately, so the user need not leave this
+  // screen before the transfer begins. Keep normal text timing unchanged.
+  bool prefetchFiles = false;
+  if (m_active && info->m_id == kClipboardClipboard) {
+    const auto *transfer = dynamic_cast<ServerProxyFileTransfer *>(m_server);
+    if (transfer != nullptr && transfer->canTransferFiles()) {
+      Clipboard clipboard;
+      prefetchFiles =
+          m_screen->getClipboard(info->m_id, &clipboard) && deskflow::filetransfer::containsFiles(&clipboard);
+    }
+  }
+  if (!m_active || prefetchFiles) {
     sendClipboard(info->m_id);
   }
 }

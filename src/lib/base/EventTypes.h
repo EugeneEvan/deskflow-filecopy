@@ -233,6 +233,12 @@ enum class EventTypes : uint32_t
   /// This event is sent whenever a clipboard chunk is transferred.
   ClipboardSending,
 
+  /// Dispatch a bounded file-copy envelope after earlier clipboard events.
+  FileTransferReceive,
+
+  /// Dispatch worker results without waiting for the file-copy timer.
+  FileTransferWake,
+
   /// Start libei
   EIConnected,
 

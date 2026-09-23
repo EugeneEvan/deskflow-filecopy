@@ -51,6 +51,7 @@ public:
     Text,        //!< Text format, UTF-8, newline is LF
     HTML,        //!< HTML format, HTML fragment, UTF-8, newline is LF
     Bitmap,      //!< Bitmap format, BMP 24/32bpp, BI_RGB
+    Files,       //!< File reference list, encoded per FileTransferFormat
     TotalFormats //!< The number of clipboard formats supported
   };
 
@@ -124,14 +125,16 @@ public:
   Merge \p clipboard's data into a single buffer that can be later
   unmarshalled to restore the clipboard and return the buffer.
   */
-  static std::string marshall(const IClipboard *clipboard);
+  // Network callers must exclude local file paths; file contents use the
+  // negotiated file-transfer channel instead.
+  static std::string marshall(const IClipboard *clipboard, bool includeFiles = true);
 
   //! Unmarshall clipboard data
   /*!
   Extract marshalled clipboard data and store it in \p clipboard.
   Sets the clipboard time to \c time.
   */
-  static void unmarshall(IClipboard *clipboard, const std::string_view &data, Time time);
+  static void unmarshall(IClipboard *clipboard, const std::string_view &data, Time time, bool includeFiles = true);
 
   //! Copy clipboard
   /*!

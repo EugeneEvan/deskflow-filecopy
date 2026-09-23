@@ -9,6 +9,7 @@
 #include "base/Log.h"
 
 #include <QObject>
+#include <QTemporaryDir>
 
 class ClientProxyTests : public QObject
 {
@@ -16,13 +17,20 @@ class ClientProxyTests : public QObject
 
 private Q_SLOTS:
   void initTestCase();
+  void cleanupTestCase();
   void keyDown_data();
   void keyDown();
   void keyRepeat_data();
   void keyRepeat();
   void keyUp_data();
   void keyUp();
+  void fileCopyNegotiatesThroughMessageParser();
+  void fileCopyDisabledDoesNotAdvertiseOrAcknowledge();
+  void fileCopyRejectsDataBeforeNegotiation();
+  void fileSelectionDoesNotSendLegacyClipboard();
 
 private:
   Log m_log;
+  QTemporaryDir m_settingsDirectory;
+  QString m_originalSettings;
 };

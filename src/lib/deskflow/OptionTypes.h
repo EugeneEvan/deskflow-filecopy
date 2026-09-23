@@ -59,6 +59,9 @@ static const OptionID kOptionDefaultLockToScreenState = OPTION_CODE("LTSS");
 static const OptionID kOptionDisableLockToScreen = OPTION_CODE("DLTS");
 static const OptionID kOptionClipboardSharing = OPTION_CODE("CLPS");
 static const OptionID kOptionClipboardSharingSize = OPTION_CODE("CLSZ");
+// Optional Windows file-copy extension; old peers ignore unknown options.
+static const OptionID kOptionFileCopy = OPTION_CODE("DFCP");
+inline constexpr uint32_t kFileCopyCapability = 0x44460001;
 //@}
 
 //! @name Screen switch corner masks

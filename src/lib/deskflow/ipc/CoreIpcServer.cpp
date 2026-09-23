@@ -8,6 +8,7 @@
 
 #include "base/Log.h"
 #include "common/Constants.h"
+#include "deskflow/FileTransferBridge.h"
 
 #include <QLocalSocket>
 
@@ -27,9 +28,25 @@ CoreIpcServer &CoreIpcServer::instance()
   return *s_instance;
 }
 
+CoreIpcServer::~CoreIpcServer()
+{
+  if (s_instance == this)
+    s_instance = nullptr;
+}
+
+bool CoreIpcServer::available()
+{
+  return s_instance != nullptr;
+}
+
 void CoreIpcServer::processCommand(QLocalSocket *clientSocket, const QString &command, const QStringList &parts)
 {
   Q_UNUSED(parts)
+  if (command == QStringLiteral("cancelFileTransfer")) {
+    FileTransferBridge::requestCancelAll();
+    writeToClientSocket(clientSocket, QStringLiteral("ok"));
+    return;
+  }
   if (command == QStringLiteral("stop")) {
     LOG_DEBUG("core ipc server got stop message");
     writeToClientSocket(clientSocket, QStringLiteral("ok"));

@@ -7,14 +7,22 @@
 #include "ClientProxyTests.h"
 
 #include "../deskflow/MockEventQueue.h"
+#include "common/Settings.h"
 #include "deskflow/AppUtil.h"
+#include "deskflow/Clipboard.h"
+#include "deskflow/OptionTypes.h"
 #include "io/IStream.h"
 #include "server/ClientProxy1_0.h"
 #include "server/ClientProxy1_1.h"
 #include "server/ClientProxy1_6.h"
 #include "server/ClientProxy1_7.h"
 #include "server/ClientProxy1_8.h"
+#include "server/ClientProxyFileTransfer.h"
 
+#include <algorithm>
+#include <cstring>
+#include <deque>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -46,6 +54,10 @@ public:
 class CapturingStream : public deskflow::IStream
 {
 public:
+  void push(const QByteArray &packet)
+  {
+    m_input.push_back(packet);
+  }
   QByteArray take()
   {
     auto bytes = m_buffer;
@@ -62,9 +74,18 @@ public:
   {
   }
 
-  uint32_t read(void *, uint32_t) override
+  uint32_t read(void *buffer, uint32_t size) override
   {
-    return 0;
+    if (m_input.empty())
+      return 0;
+    auto &packet = m_input.front();
+    size = std::min(size, static_cast<uint32_t>(packet.size()));
+    if (buffer)
+      std::memcpy(buffer, packet.constData(), size);
+    packet.remove(0, size);
+    if (packet.isEmpty())
+      m_input.pop_front();
+    return size;
   }
 
   void flush() override
@@ -86,16 +107,100 @@ public:
 
   bool isReady() const override
   {
-    return false;
+    return !m_input.empty();
   }
 
   uint32_t getSize() const override
   {
-    return 0;
+    return m_input.empty() ? 0 : static_cast<uint32_t>(m_input.front().size());
   }
 
 private:
   QByteArray m_buffer;
+  std::deque<QByteArray> m_input;
+};
+
+class ProtocolEventQueue : public MockEventQueue
+{
+public:
+  ~ProtocolEventQueue() override
+  {
+    for (const auto &event : queued)
+      Event::deleteData(event);
+  }
+  void addHandler(EventTypes type, void *target, const EventHandler &handler) override
+  {
+    m_handlers[{type, reinterpret_cast<uintptr_t>(target)}] = handler;
+  }
+  void removeHandler(EventTypes type, void *target) override
+  {
+    m_handlers.erase({type, reinterpret_cast<uintptr_t>(target)});
+  }
+  void removeHandlers(void *target) override
+  {
+    std::erase_if(m_handlers, [target](const auto &entry) {
+      return entry.first.second == reinterpret_cast<uintptr_t>(target);
+    });
+  }
+  bool dispatchEvent(const Event &event) override
+  {
+    auto found = m_handlers.find({event.getType(), reinterpret_cast<uintptr_t>(event.getTarget())});
+    if (found == m_handlers.end())
+      return false;
+    const auto handler = found->second;
+    handler(event);
+    return true;
+  }
+  void addEvent(Event &&event) override
+  {
+    queued.push_back(std::move(event));
+  }
+  EventQueueTimer *newTimer(double, void *) override
+  {
+    return reinterpret_cast<EventQueueTimer *>(++m_timer);
+  }
+  EventQueueTimer *newOneShotTimer(double seconds, void *target) override
+  {
+    return newTimer(seconds, target);
+  }
+  bool has(EventTypes type) const
+  {
+    return std::any_of(queued.begin(), queued.end(), [type](const auto &event) { return event.getType() == type; });
+  }
+  std::vector<Event> queued;
+
+private:
+  uintptr_t m_timer = 0x100;
+  std::map<std::pair<EventTypes, uintptr_t>, EventHandler> m_handlers;
+};
+
+void enableFileCopy(bool enabled)
+{
+  Settings::setValue(Settings::Core::FileTransferEnabled, enabled);
+  Settings::setValue(Settings::Security::TlsEnabled, true);
+  Settings::setValue(Settings::Server::EnableClipboard, true);
+}
+
+struct FileProxyUnderTest
+{
+  ProtocolEventQueue events;
+  CapturingStream *stream = new CapturingStream;
+  ClientProxyFileTransfer proxy{"client", stream, reinterpret_cast<Server *>(0x1), &events};
+
+  FileProxyUnderTest()
+  {
+    stream->take();
+    // Run the real initial DINF parser, which switches handleData to
+    // the normal virtual message parser before FCHL can be accepted.
+    stream->push("DINF" + QByteArray::fromHex("0000 0000 0780 0438 0000 0000 0000"));
+    events.dispatchEvent(Event(EventTypes::StreamInputReady, stream->getEventTarget()));
+    stream->take();
+  }
+  void receive(const QByteArray &packet)
+  {
+    stream->push(packet);
+    events.dispatchEvent(Event(EventTypes::StreamInputReady, stream->getEventTarget()));
+  }
 };
 
 std::unique_ptr<ClientProxy> makeProxy(int minor, deskflow::IStream *stream, IEventQueue *events)
@@ -151,6 +256,14 @@ void ClientProxyTests::initTestCase()
 {
   // the 1.8 constructor reads the keyboard layouts through AppUtil::instance()
   static TestAppUtil appUtil;
+  QVERIFY(m_settingsDirectory.isValid());
+  m_originalSettings = Settings::settingsFile();
+  Settings::setSettingsFile(m_settingsDirectory.filePath("protocol-tests.conf"));
+}
+
+void ClientProxyTests::cleanupTestCase()
+{
+  Settings::setSettingsFile(m_originalSettings);
 }
 
 // These formats are frozen because shipped third-party clients parse them byte
@@ -220,6 +333,59 @@ void ClientProxyTests::keyUp()
   ProxyUnderTest test(minor);
   test.proxy->keyUp(kKey, kMask, kButton);
   QCOMPARE(test.stream->take(), expected);
+}
+
+void ClientProxyTests::fileCopyNegotiatesThroughMessageParser()
+{
+#ifndef Q_OS_WIN
+  QSKIP("File copying is currently Windows only");
+#endif
+  enableFileCopy(true);
+  FileProxyUnderTest test;
+  QVERIFY(test.events.has(EventTypes::ClientProxyReady));
+  test.proxy.setOptions({});
+  QCOMPARE(test.stream->take(), "DSOP" + QByteArray::fromHex("00000002 44464350 44460001"));
+  test.receive("FCHL");
+  QCOMPARE(test.stream->take(), QByteArray("FCHA"));
+  QVERIFY(!test.events.has(EventTypes::ClientProxyDisconnected));
+  // A repeated capability hello is a protocol error, not a second session.
+  test.receive("FCHL");
+  QVERIFY(test.events.has(EventTypes::ClientProxyDisconnected));
+}
+
+void ClientProxyTests::fileCopyDisabledDoesNotAdvertiseOrAcknowledge()
+{
+  enableFileCopy(false);
+  FileProxyUnderTest test;
+  test.proxy.setOptions({});
+  QCOMPARE(test.stream->take(), "DSOP" + QByteArray::fromHex("00000000"));
+  test.receive("FCHL");
+  QVERIFY(!test.stream->take().contains("FCHA"));
+  QVERIFY(test.events.has(EventTypes::ClientProxyDisconnected));
+}
+
+void ClientProxyTests::fileCopyRejectsDataBeforeNegotiation()
+{
+  enableFileCopy(false);
+  FileProxyUnderTest test;
+  test.receive("FCDT" + QByteArray::fromHex("00000001 01"));
+  QVERIFY(test.events.has(EventTypes::ClientProxyDisconnected));
+}
+
+void ClientProxyTests::fileSelectionDoesNotSendLegacyClipboard()
+{
+  enableFileCopy(false);
+  FileProxyUnderTest test;
+  Clipboard clipboard;
+  QVERIFY(clipboard.open(0));
+  clipboard.add(IClipboard::Format::Files, "private source paths");
+  clipboard.add(IClipboard::Format::Text, "C:\\private-source.txt");
+  clipboard.close();
+  test.proxy.setClipboard(kClipboardClipboard, &clipboard);
+  Clipboard emptySelection;
+  test.proxy.setClipboard(kClipboardSelection, &emptySelection);
+  QVERIFY(!test.events.has(EventTypes::ClipboardSending));
+  QVERIFY(test.stream->take().isEmpty());
 }
 
 QTEST_MAIN(ClientProxyTests)

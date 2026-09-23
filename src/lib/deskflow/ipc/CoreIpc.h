@@ -10,5 +10,5 @@
 
 #include <QString>
 
-void ipcSendToClient(const QString &command, const QString &args = "");
+void ipcSendToClient(const QString &command, const QString &args = "", bool replacePending = false);
 void ipcSendConnectionState(deskflow::core::ConnectionState state);

@@ -58,6 +58,7 @@ public:
     inline static const auto Display = QStringLiteral("core/display");
     inline static const auto UseHooks = QStringLiteral("core/useHooks");
     inline static const auto Language = QStringLiteral("core/language");
+    inline static const auto FileTransferEnabled = QStringLiteral("core/fileTransferEnabled");
     inline static const auto EnableEnterCommand = QStringLiteral("core/enableEnterCommand");
     inline static const auto ScreenEnterCommand = QStringLiteral("core/enterCommand");
     inline static const auto EnableExitCommand = QStringLiteral("core/enableExitCommand");
@@ -279,6 +280,7 @@ private:
     , Core::Display
     , Core::UseHooks
     , Core::Language
+    , Core::FileTransferEnabled
     , Daemon::ConfigFile
     , Daemon::Elevate
     , Daemon::LogFile
@@ -331,6 +333,7 @@ private:
     , Gui::ShowVersionInTitle
     , Gui::IgnoreMissingKeyboardLayouts
     , Core::PreventSleep
+    , Core::FileTransferEnabled
     , Core::EnableEnterCommand
     , Core::EnableExitCommand
     , Client::DynamicConnectionRetry

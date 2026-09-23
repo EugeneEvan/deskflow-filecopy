@@ -451,6 +451,62 @@ A bound IP is now invalid, you may need to restart the server.</source>
 绑定的IP地址现在无效，您可能需要重启服务器。</translation>
     </message>
     <message>
+        <source>Cancelling file transfer...</source>
+        <translation>正在取消文件传输…</translation>
+    </message>
+    <message>
+        <source>Preparing files...</source>
+        <translation>正在准备文件…</translation>
+    </message>
+    <message>
+        <source>Sending files %p%</source>
+        <translation>正在发送 %p%</translation>
+    </message>
+    <message>
+        <source>Receiving files %p%</source>
+        <translation>正在接收 %p%</translation>
+    </message>
+    <message>
+        <source>Sent %1 / %2. Wait until the receiving computer is ready before pasting.</source>
+        <translation>已发送 %1 / %2；请等待接收端完成后再粘贴。</translation>
+    </message>
+    <message>
+        <source>Received %1 / %2. Wait until the transfer finishes before pasting.</source>
+        <translation>已接收 %1 / %2；请等待完成后再粘贴。</translation>
+    </message>
+    <message>
+        <source>Files ready to paste</source>
+        <translation>文件就绪，可以粘贴</translation>
+    </message>
+    <message>
+        <source>Files received. Press Ctrl+V in the destination folder to paste.</source>
+        <translation>接收完成，请在目标文件夹按 Ctrl+V 粘贴。</translation>
+    </message>
+    <message>
+        <source>Files sent</source>
+        <translation>文件发送完成</translation>
+    </message>
+    <message>
+        <source>Files sent. Paste on the receiving computer when it reports that files are ready.</source>
+        <translation>文件已发送，请在接收端提示就绪后粘贴。</translation>
+    </message>
+    <message>
+        <source>File transfer cancelled</source>
+        <translation>文件传输已取消</translation>
+    </message>
+    <message>
+        <source>File transfer failed</source>
+        <translation>文件传输失败</translation>
+    </message>
+    <message>
+        <source>File transfer interrupted</source>
+        <translation>文件传输已中断</translation>
+    </message>
+    <message>
+        <source>Cancel transfer</source>
+        <translation>取消传输</translation>
+    </message>
+    <message>
         <source>&amp;File</source>
         <translation>文件(&amp;F)</translation>
     </message>
@@ -1194,6 +1250,14 @@ Enabling this setting will disable the server config GUI.</source>
         <translation>详细调试输出</translation>
     </message>
     <message>
+        <source>File copy is unavailable: enable TLS encryption on both computers.</source>
+        <translation>文件复制当前不可用：请在两端开启 TLS 加密。</translation>
+    </message>
+    <message>
+        <source>File copy is unavailable: enable clipboard sharing in the server configuration.</source>
+        <translation>文件复制当前不可用：请在服务端配置中开启剪贴板共享。</translation>
+    </message>
+    <message>
         <source>Automatic</source>
         <translation type="unfinished">自动的</translation>
     </message>
@@ -1256,6 +1320,18 @@ Enabling this setting will disable the server config GUI.</source>
     <message>
         <source>Remove all settings</source>
         <translation type="unfinished">移除所有设置</translation>
+    </message>
+    <message>
+        <source>File copy requires a signed-in Windows user session. If the core runs as SYSTEM or in session 0, switch to Desktop mode.</source>
+        <translation>文件复制需要已登录的 Windows 用户会话。若核心进程以 SYSTEM 身份或在会话 0 中运行，请切换至桌面模式。</translation>
+    </message>
+    <message>
+        <source>Enable file copy (Windows to Windows)</source>
+        <translation>启用文件复制（Windows ↔ Windows）</translation>
+    </message>
+    <message>
+        <source>Enable file copy and TLS on both computers, and clipboard sharing on the server. Files are cached first; press Ctrl+V in the destination folder when ready.</source>
+        <translation>两端均需启用文件复制和 TLS，服务端需开启剪贴板共享。先接收至缓存，完成后再到目标文件夹按 Ctrl+V。</translation>
     </message>
 </context>
 <context>

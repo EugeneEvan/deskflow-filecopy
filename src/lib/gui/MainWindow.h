@@ -28,6 +28,8 @@
 class QAction;
 class QMenu;
 class QLocalServer;
+class QProgressBar;
+class QPushButton;
 
 class DeskflowApplication;
 class LogDock;
@@ -120,6 +122,7 @@ private:
   void handleConnectionRefused(deskflow::core::ConnectionRefusal reason);
   void handlePeerFingerprint(const QString &fingerprint);
   void handleMissingKeyboardLayouts(const QString &layouts);
+  void handleFileTransferStatus(const QString &statusJson);
   void closeEvent(QCloseEvent *event) override;
   bool maybeHideToTray();
   void secureSocket(bool secureSocket);
@@ -184,6 +187,10 @@ private:
 
   LogDock *m_logDock;
   StatusBar *m_statusBar = nullptr;
+  QProgressBar *m_fileTransferProgress = nullptr;
+  QPushButton *m_cancelFileTransfer = nullptr;
+  QString m_fileTransferId;
+  QString m_fileTransferState;
 
   // Window Menu
   QMenu *m_menuFile = nullptr;

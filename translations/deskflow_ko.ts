@@ -373,6 +373,10 @@ Do you want to connect to the server?
         <translation>현재 TLS 키 길이가 허용되는 최소 길이보다 짧습니다. 새 2048비트 키를 생성합니다.</translation>
     </message>
     <message>
+        <source>Cancelling file transfer...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>invalid certificate, generating a new one</source>
         <translation type="unfinished">유효하지 않은 인증서입니다. 새 인증서를 생성하는 중입니다</translation>
     </message>
@@ -415,6 +419,58 @@ Do you want to connect to the server?
     <message>
         <source>&lt;p&gt;Failed to connect to the server &apos;%1&apos;.&lt;/p&gt;&lt;p&gt;A Client with your name is already connected to the server.&lt;/p&gt;Please ensure that you&apos;re using a unique name and that only a single instance of the client process is running.&lt;/p&gt;</source>
         <translation>&lt;p&gt;서버 &apos;%1&apos;에 연결하지 못했습니다.&lt;/p&gt;&lt;p&gt;같은 이름의 클라이언트가 이미 서버에 연결되어 있습니다.&lt;/p&gt;&lt;p&gt;고유한 이름을 사용하고, 클라이언트 프로세스가 하나만 실행 중인지 확인하세요.&lt;/p&gt;</translation>
+    </message>
+    <message>
+        <source>Preparing files...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sending files %p%</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Receiving files %p%</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sent %1 / %2. Wait until the receiving computer is ready before pasting.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Received %1 / %2. Wait until the transfer finishes before pasting.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Files ready to paste</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Files received. Press Ctrl+V in the destination folder to paste.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Files sent</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Files sent. Paste on the receiving computer when it reports that files are ready.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File transfer cancelled</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File transfer failed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File transfer interrupted</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cancel transfer</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>View &amp;Help</source>
@@ -1192,6 +1248,14 @@ Enabling this setting will disable the server config GUI.</source>
         <translation>상세 디버그 출력</translation>
     </message>
     <message>
+        <source>File copy is unavailable: enable TLS encryption on both computers.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File copy is unavailable: enable clipboard sharing in the server configuration.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Automatic</source>
         <translation type="unfinished">자동</translation>
     </message>
@@ -1254,6 +1318,18 @@ Enabling this setting will disable the server config GUI.</source>
     <message>
         <source>Remove all settings</source>
         <translation type="unfinished">모든 설정 제거</translation>
+    </message>
+    <message>
+        <source>Enable file copy (Windows to Windows)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enable file copy and TLS on both computers, and clipboard sharing on the server. Files are cached first; press Ctrl+V in the destination folder when ready.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File copy requires a signed-in Windows user session. If the core runs as SYSTEM or in session 0, switch to Desktop mode.</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>

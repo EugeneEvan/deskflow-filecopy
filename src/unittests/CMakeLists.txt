@@ -40,6 +40,19 @@ function(create_test)
   endif()
   add_test(NAME ${m_NAME} COMMAND $<TARGET_FILE:${m_NAME}> WORKING_DIRECTORY ${m_WORKING_DIRECTORY})
   set_tests_properties(${m_NAME} PROPERTIES DEPENDS ${m_DEPENDS})
+  if(WIN32)
+    # Tests live outside bin and must also work without installer deployment
+    # or a developer shell that already has Qt on PATH.
+    set_property(TEST ${m_NAME} APPEND PROPERTY ENVIRONMENT_MODIFICATION
+      "PATH=path_list_prepend:${PROJECT_BINARY_DIR}/bin"
+      "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
+    if(TARGET Qt6::QWindowsIntegrationPlugin)
+      set_property(TEST ${m_NAME} APPEND PROPERTY ENVIRONMENT_MODIFICATION
+        "QT_QPA_PLATFORM_PLUGIN_PATH=set:$<TARGET_FILE_DIR:Qt6::QWindowsIntegrationPlugin>"
+      )
+    endif()
+  endif()
   set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_tests ${m_NAME})
 
   if(ENABLE_COVERAGE)
@@ -86,6 +99,6 @@ if(NOT SKIP_BUILD_TESTS)
   add_custom_command (
     TARGET run_tests
     POST_BUILD
-    COMMAND ${qPA_Platform} ${CMAKE_CTEST_COMMAND} --test-dir  "${CMAKE_BINARY_DIR}/src/unittests" --output-on-failure
+    COMMAND ${qPA_Platform} ${CMAKE_CTEST_COMMAND} --test-dir  "${CMAKE_BINARY_DIR}/src/unittests" --output-on-failure --interactive-debug-mode 0
   )
 endif()

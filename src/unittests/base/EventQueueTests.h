@@ -16,6 +16,8 @@ class EventQueueTests : public QObject
 
 private Q_SLOTS:
   void initTestCase();
+  void monotonicClock_preservesSubsecondElapsedTime();
+  void shortTimer_firesRepeatedlyWithinOneSecond();
   void dispatchEvent_noHandler_returnsFalse();
   void dispatchEvent_noTypeHandler_dispatchesUnknownHandler();
   void dispatchEvent_handlerRemovesItself_keepsHandlerAliveUntilReturn();

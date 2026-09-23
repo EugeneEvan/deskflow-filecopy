@@ -8,6 +8,7 @@
 
 #include "base/Log.h"
 #include "deskflow/ClipboardChunk.h"
+#include "deskflow/FileTransferProtocol.h"
 #include "deskflow/ProtocolUtil.h"
 #include "deskflow/StreamChunker.h"
 #include "io/IStream.h"
@@ -39,7 +40,10 @@ void ClientProxy1_6::setClipboard(ClipboardID id, const IClipboard *clipboard)
     m_clipboard[id].m_dirty = false;
     Clipboard::copy(&m_clipboard[id].m_clipboard, clipboard);
 
-    std::string data = m_clipboard[id].m_clipboard.marshall();
+    if (deskflow::filetransfer::containsFiles(&m_clipboard[id].m_clipboard)) {
+      return;
+    }
+    std::string data = m_clipboard[id].m_clipboard.marshall(false);
 
     size_t size = data.size();
     LOG_DEBUG("sending clipboard %d to \"%s\"", id, getName().c_str());
@@ -67,7 +71,8 @@ bool ClientProxy1_6::recvClipboard()
          m_clipboardDataCached.size())
     );
     // save clipboard
-    m_clipboard[id].m_clipboard.unmarshall(m_clipboardDataCached, 0);
+    m_clipboard[id].m_clipboard.unmarshall(m_clipboardDataCached, 0, false);
+    onRemoteClipboardChanged(id);
     m_clipboard[id].m_sequenceNumber = seq;
     m_clipboardDataCached.clear();
     m_clipboardDataCached.shrink_to_fit();

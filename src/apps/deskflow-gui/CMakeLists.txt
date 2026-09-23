@@ -68,27 +68,32 @@ if(WIN32)
 
   set(QT_DEPENDS_DIR ${CMAKE_BINARY_DIR}/qt-depends)
 
-  add_custom_command(
-    TARGET ${target} POST_BUILD
-    COMMAND ${DEPLOYQT}
-      --no-compiler-runtime
-      --no-system-d3d-compiler
-      --no-opengl-sw
-      --no-quick-import
-      --dir "${QT_DEPENDS_DIR}"
-      --plugindir "${QT_DEPENDS_DIR}/plugins"
-      $<TARGET_FILE:${target}>
-    COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
-      ${QT_DEPENDS_DIR}
-      $<TARGET_FILE_DIR:${target}>
-  )
+  # Deploy Qt runtime DLLs next to the app only when the deploy tool is
+  # available (i.e. the installer is being built). Skipped otherwise so a
+  # plain dev build works even when windeployqt is not installed.
+  if(DEPLOYQT)
+    add_custom_command(
+      TARGET ${target} POST_BUILD
+      COMMAND ${DEPLOYQT}
+        --no-compiler-runtime
+        --no-system-d3d-compiler
+        --no-opengl-sw
+        --no-quick-import
+        --dir "${QT_DEPENDS_DIR}"
+        --plugindir "${QT_DEPENDS_DIR}/plugins"
+        $<TARGET_FILE:${target}>
+      COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
+        ${QT_DEPENDS_DIR}
+        $<TARGET_FILE_DIR:${target}>
+    )
 
-  install(
-    DIRECTORY ${QT_DEPENDS_DIR}/
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    PATTERN "dx*.dll" EXCLUDE
-    PATTERN "icu*.dll" EXCLUDE
-  )
+    install(
+      DIRECTORY ${QT_DEPENDS_DIR}/
+      DESTINATION ${CMAKE_INSTALL_LIBDIR}
+      PATTERN "dx*.dll" EXCLUDE
+      PATTERN "icu*.dll" EXCLUDE
+    )
+  endif()
 
 elseif(APPLE)
   if (BUILD_OSX_BUNDLE)

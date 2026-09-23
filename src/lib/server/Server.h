@@ -17,6 +17,7 @@
 #include "deskflow/MouseTypes.h"
 #include "server/Config.h"
 
+#include <QStringList>
 #include <climits>
 #include <map>
 #include <set>
@@ -199,6 +200,8 @@ public:
   void getClients(std::vector<std::string> &list) const;
   void sendConnectedClientsIpc() const;
   size_t getMaximumClipboardSizeBytes() const;
+  bool publishTransferredFiles(const BaseClientProxy *sender, const QStringList &paths);
+  bool canTransferFiles() const;
 
   //@}
 

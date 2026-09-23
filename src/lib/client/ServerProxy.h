@@ -12,6 +12,7 @@
 #include "deskflow/ClipboardChunk.h"
 #include "deskflow/ClipboardTypes.h"
 #include "deskflow/KeyTypes.h"
+#include "deskflow/OptionTypes.h"
 
 class Client;
 class ClientInfo;
@@ -48,8 +49,8 @@ public:
   //@{
 
   void onInfoChanged();
-  bool onGrabClipboard(ClipboardID);
-  void onClipboardChanged(ClipboardID, const IClipboard *);
+  virtual bool onGrabClipboard(ClipboardID);
+  virtual void onClipboardChanged(ClipboardID, const IClipboard *);
 
   //@}
 
@@ -63,6 +64,19 @@ protected:
 
   virtual ConnectionResult parseHandshakeMessage(const uint8_t *code);
   virtual ConnectionResult parseMessage(const uint8_t *code);
+  virtual void onOptionsChanged(const OptionsList &)
+  {
+  }
+  virtual void onOptionsReset()
+  {
+  }
+  virtual void onRemoteClipboardChanged(ClipboardID)
+  {
+  }
+  uint32_t getCurrentMessageSize() const
+  {
+    return m_currentMessageSize;
+  }
   void keyDown(uint16_t id, uint16_t mask, uint16_t button, const std::string &lang);
   void keyRepeat(uint16_t id, uint16_t mask, uint16_t count, uint16_t button, const std::string &lang);
 
@@ -115,6 +129,7 @@ private:
   deskflow::IStream *m_stream = nullptr;
 
   uint32_t m_seqNum = 0;
+  uint32_t m_currentMessageSize = 0;
 
   bool m_compressMouse = false;
   bool m_compressMouseRelative = false;

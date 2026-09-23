@@ -23,7 +23,8 @@ public:
   ~IpcServer() override;
 
   void listen();
-  void broadcastCommand(const QString &command, const QString &args = "");
+  // State snapshots only need the latest value when the GUI is disconnected.
+  void broadcastCommand(const QString &command, const QString &args = "", bool replacePending = false);
 
 Q_SIGNALS:
   void logLevelChanged(const QString &logLevel);

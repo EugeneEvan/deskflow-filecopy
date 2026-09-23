@@ -93,6 +93,26 @@
         </widget>
        </item>
        <item>
+        <widget class="QCheckBox" name="cbFileTransfer">
+         <property name="toolTip">
+          <string>File copy requires a signed-in Windows user session. If the core runs as SYSTEM or in session 0, switch to Desktop mode.</string>
+         </property>
+         <property name="text">
+          <string>Enable file copy (Windows to Windows)</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="lblFileTransferInfo">
+         <property name="text">
+          <string>Enable file copy and TLS on both computers, and clipboard sharing on the server. Files are cached first; press Ctrl+V in the destination folder when ready.</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
         <layout class="QFormLayout" name="formLayout">
          <item row="1" column="1">
           <widget class="QRadioButton" name="rbIconColorful">

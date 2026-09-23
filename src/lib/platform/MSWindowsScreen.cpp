@@ -1347,7 +1347,12 @@ void MSWindowsScreen::onClipboardChange()
   // now notify client that somebody changed the clipboard (unless
   // we're the owner).
   if (!MSWindowsClipboard::isOwnedByDeskflow()) {
-    if (m_ownClipboard) {
+    // WM_CLIPBOARDUPDATE already filters repeated sequence numbers. A
+    // second local file copy must start a new prefetch even though we lost
+    // ownership on the first copy. Our own published caches stay excluded.
+    const bool newFileSelection =
+        Settings::value(Settings::Core::FileTransferEnabled).toBool() && IsClipboardFormatAvailable(CF_HDROP);
+    if (m_ownClipboard || newFileSelection) {
       LOG_DEBUG("clipboard changed: lost ownership");
       m_ownClipboard = false;
       sendClipboardEvent(EventTypes::ClipboardGrabbed, kClipboardClipboard);

@@ -489,6 +489,11 @@ extern const char *const kMsgCInfoAck;
  */
 extern const char *const kMsgCKeepAlive;
 
+// Optional file-copy extension, negotiated using the DFCP option.
+extern const char *const kMsgCFileCopyHello;
+extern const char *const kMsgCFileCopyAck;
+extern const char *const kMsgDFileCopy;
+
 /** @} */ // end of protocol_commands group
 
 /**

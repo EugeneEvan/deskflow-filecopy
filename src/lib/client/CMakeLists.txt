@@ -12,6 +12,11 @@ add_library(client STATIC
   ServerProxy1_7.h
   ServerProxy1_8.cpp
   ServerProxy1_8.h
+  ServerProxyFileTransfer.cpp
+  ServerProxyFileTransfer.h
 )
 
 target_link_libraries(client PUBLIC common)
+
+# The optional file-copy bridge is supplied by the app library.
+target_link_libraries(client PUBLIC app)

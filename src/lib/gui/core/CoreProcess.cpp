@@ -657,7 +657,15 @@ void CoreProcess::onCoreIpcMessageReceived(const QString &command, const QString
     Q_EMIT peerFingerprint(args);
   } else if (command == "missingKeyboardLayouts") {
     Q_EMIT missingKeyboardLayouts(args);
+  } else if (command == "fileTransfer") {
+    Q_EMIT fileTransferStatusChanged(args);
   }
+}
+
+void CoreProcess::cancelFileTransfer()
+{
+  if (m_coreIpcClient)
+    m_coreIpcClient->sendCancelFileTransfer();
 }
 
 bool CoreProcess::checkSecureSocket(const QString &line)

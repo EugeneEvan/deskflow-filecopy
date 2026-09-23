@@ -11,8 +11,11 @@
 #include "base/Log.h"
 #include "platform/MSWindowsClipboardBitmapConverter.h"
 #include "platform/MSWindowsClipboardFacade.h"
+#include "platform/MSWindowsClipboardFileConverter.h"
 #include "platform/MSWindowsClipboardHTMLConverter.h"
 #include "platform/MSWindowsClipboardUTF16Converter.h"
+
+#include <ShlObj_core.h>
 
 //
 // MSWindowsClipboard
@@ -30,6 +33,7 @@ MSWindowsClipboard::MSWindowsClipboard(HWND window)
   m_converters.push_back(new MSWindowsClipboardUTF16Converter);
   m_converters.push_back(new MSWindowsClipboardBitmapConverter);
   m_converters.push_back(new MSWindowsClipboardHTMLConverter);
+  m_converters.push_back(new MSWindowsClipboardFileConverter);
 }
 
 MSWindowsClipboard::~MSWindowsClipboard()
@@ -100,6 +104,27 @@ void MSWindowsClipboard::add(Format format, const std::string &data)
       if (win32Data != nullptr) {
         LOG_DEBUG("add %d bytes to clipboard format: %d", data.size(), format);
         m_facade->write(win32Data, converter->getWin32Format());
+        if (format == Format::Files && GetClipboardData(CF_HDROP) == win32Data) {
+          // Cached files are always copied; Explorer must never move them.
+          const UINT effectFormat = RegisterClipboardFormat(CFSTR_PREFERREDDROPEFFECT);
+          HGLOBAL effect = GlobalAlloc(GMEM_MOVEABLE | GMEM_ZEROINIT, sizeof(DWORD));
+          if (effect != nullptr) {
+            auto *value = static_cast<DWORD *>(GlobalLock(effect));
+            if (value != nullptr && effectFormat != 0) {
+              *value = DROPEFFECT_COPY;
+              GlobalUnlock(effect);
+              m_facade->write(effect, effectFormat);
+            } else {
+              if (value != nullptr) {
+                GlobalUnlock(effect);
+              }
+              GlobalFree(effect);
+              LOG_WARN("failed to prepare clipboard file copy effect");
+            }
+          } else {
+            LOG_WARN("failed to allocate clipboard file copy effect");
+          }
+        }
         isSucceeded = true;
         break;
       } else {

@@ -24,8 +24,14 @@ void CoreIpcClient::sendStop()
 
 void CoreIpcClient::processCommand(const QString &command, const QStringList &parts)
 {
-  const auto args = parts.size() >= 2 ? parts.at(1) : QString();
+  // JSON error details and Windows paths can contain '='.
+  const auto args = parts.size() >= 2 ? parts.mid(1).join('=') : QString();
   Q_EMIT commandReceived(command, args);
+}
+
+void CoreIpcClient::sendCancelFileTransfer()
+{
+  sendMessage(QStringLiteral("cancelFileTransfer"));
 }
 
 } // namespace deskflow::gui::ipc

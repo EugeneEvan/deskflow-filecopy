@@ -30,6 +30,14 @@ private Q_SLOTS:
   void isOwnedByDeskflow();
   void normalisesMalformedMacBitmap();
   void preservesHealthyMacV5Bitmap();
+  void filesRoundTrip();
+  void filesGetEmptyWhenAbsent();
+  void filesUnicodeAndDirectories();
+  void filesWithOffsetAndAnsiPaths();
+  void filesRejectMalformedDrop_data();
+  void filesRejectMalformedDrop();
+  void filesRejectInvalidReferences();
+  void filesCopyEffect();
 
 private:
   Log m_log;

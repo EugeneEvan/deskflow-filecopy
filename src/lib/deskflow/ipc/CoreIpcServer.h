@@ -21,8 +21,10 @@ class CoreIpcServer : public IpcServer
 
 public:
   explicit CoreIpcServer(QObject *parent);
+  ~CoreIpcServer() override;
 
   static CoreIpcServer &instance();
+  static bool available();
 
 private:
   void processCommand(QLocalSocket *clientSocket, const QString &command, const QStringList &parts) override;

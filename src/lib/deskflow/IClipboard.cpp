@@ -16,7 +16,7 @@
 // IClipboard
 //
 
-void IClipboard::unmarshall(IClipboard *clipboard, const std::string_view &data, Time time)
+void IClipboard::unmarshall(IClipboard *clipboard, const std::string_view &data, Time time, bool includeFiles)
 {
   assert(clipboard != nullptr);
 
@@ -60,7 +60,7 @@ void IClipboard::unmarshall(IClipboard *clipboard, const std::string_view &data,
       // save the data if it's a known format.  if either the client
       // or server supports more clipboard formats than the other
       // then one of them will get a format >= TotalFormats here.
-      if (format < IClipboard::Format::TotalFormats) {
+      if (format >= Format::Text && format < Format::TotalFormats && (includeFiles || format != Format::Files)) {
         clipboard->add(format, std::string(index, size));
       }
       index += size;
@@ -71,7 +71,7 @@ void IClipboard::unmarshall(IClipboard *clipboard, const std::string_view &data,
   }
 }
 
-std::string IClipboard::marshall(const IClipboard *clipboard)
+std::string IClipboard::marshall(const IClipboard *clipboard, bool includeFiles)
 {
   // return data format:
   // 4 bytes => number of formats included
@@ -93,7 +93,8 @@ std::string IClipboard::marshall(const IClipboard *clipboard)
     uint32_t size = 4;
     uint32_t numFormats = 0;
     for (uint32_t format = 0; format != totalClipboardFormats; ++format) {
-      if (clipboard->has(static_cast<IClipboard::Format>(format))) {
+      if ((includeFiles || format != static_cast<uint32_t>(Format::Files)) &&
+          clipboard->has(static_cast<IClipboard::Format>(format))) {
         ++numFormats;
         formatData[format] = clipboard->get(static_cast<IClipboard::Format>(format));
         size += 4 + 4 + (uint32_t)formatData[format].size();
@@ -106,7 +107,8 @@ std::string IClipboard::marshall(const IClipboard *clipboard)
     // marshall the data
     writeUInt32(&data, numFormats);
     for (uint32_t format = 0; format != totalClipboardFormats; ++format) {
-      if (clipboard->has(static_cast<IClipboard::Format>(format))) {
+      if ((includeFiles || format != static_cast<uint32_t>(Format::Files)) &&
+          clipboard->has(static_cast<IClipboard::Format>(format))) {
         writeUInt32(&data, format);
         writeUInt32(&data, (uint32_t)formatData[format].size());
         data += formatData[format];

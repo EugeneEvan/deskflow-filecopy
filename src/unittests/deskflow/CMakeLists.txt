@@ -53,6 +53,33 @@ create_test(
   WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/deskflow"
 )
 
+create_test(
+  NAME FileTransferFormatTests
+  DEPENDS app
+  LIBS arch base ${extra_libs}
+  SOURCE FileTransferFormatTests.cpp
+  WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/deskflow"
+)
+
+create_test(
+  NAME FileTransferSessionTests
+  DEPENDS app
+  LIBS arch base ${extra_libs}
+  SOURCE FileTransferSessionTests.cpp
+  WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/deskflow"
+)
+
+# Includes a real 60-second peer timeout, plus the remaining session cases.
+set_tests_properties(FileTransferSessionTests PROPERTIES TIMEOUT 90)
+
+create_test(
+  NAME FileTransferProtocolTests
+  DEPENDS app
+  LIBS arch base ${extra_libs}
+  SOURCE FileTransferProtocolTests.cpp
+  WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/deskflow"
+)
+
 if(BUILD_X11_SUPPORT)
   create_test(
     NAME XkbLayoutParserTests
@@ -62,4 +89,3 @@ if(BUILD_X11_SUPPORT)
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/deskflow"
   )
 endif()
-

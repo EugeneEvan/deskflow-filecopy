@@ -373,6 +373,10 @@ Do you want to connect to the server?
         <translation>現在のTLS鍵長が許容される長さより小さいため、新しい2048ビット長の鍵を生成します。</translation>
     </message>
     <message>
+        <source>Cancelling file transfer...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>invalid certificate, generating a new one</source>
         <translation>無効な証明書、新しい証明書を生成しています</translation>
     </message>
@@ -415,6 +419,58 @@ Do you want to connect to the server?
     <message>
         <source>&lt;p&gt;Failed to connect to the server &apos;%1&apos;.&lt;/p&gt;&lt;p&gt;A Client with your name is already connected to the server.&lt;/p&gt;Please ensure that you&apos;re using a unique name and that only a single instance of the client process is running.&lt;/p&gt;</source>
         <translation>&lt;p&gt;サーバー &apos;%1&apos; への接続に失敗しました。&lt;/p&gt;&lt;p&gt;同じ名前のクライアントがサーバーに接続済です。&lt;/p&gt;&lt;p&gt;名前の重複がないことと、クライアントプロセスが多重起動していない事を確認してください。&lt;/p&gt;</translation>
+    </message>
+    <message>
+        <source>Preparing files...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sending files %p%</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Receiving files %p%</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sent %1 / %2. Wait until the receiving computer is ready before pasting.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Received %1 / %2. Wait until the transfer finishes before pasting.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Files ready to paste</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Files received. Press Ctrl+V in the destination folder to paste.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Files sent</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Files sent. Paste on the receiving computer when it reports that files are ready.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File transfer cancelled</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File transfer failed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File transfer interrupted</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cancel transfer</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>View &amp;Help</source>
@@ -1194,6 +1250,14 @@ Enabling this setting will disable the server config GUI.</source>
         <translation>詳細なデバッグ出力</translation>
     </message>
     <message>
+        <source>File copy is unavailable: enable TLS encryption on both computers.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File copy is unavailable: enable clipboard sharing in the server configuration.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Automatic</source>
         <translation>自動</translation>
     </message>
@@ -1256,6 +1320,18 @@ Enabling this setting will disable the server config GUI.</source>
     <message>
         <source>Remove all settings</source>
         <translation>すべての設定を消去する</translation>
+    </message>
+    <message>
+        <source>Enable file copy (Windows to Windows)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enable file copy and TLS on both computers, and clipboard sharing on the server. Files are cached first; press Ctrl+V in the destination folder when ready.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File copy requires a signed-in Windows user session. If the core runs as SYSTEM or in session 0, switch to Desktop mode.</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>

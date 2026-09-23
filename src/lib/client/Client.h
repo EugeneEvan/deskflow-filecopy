@@ -16,6 +16,7 @@
 #include "deskflow/IClipboard.h"
 #include "net/NetworkAddress.h"
 
+#include <QStringList>
 #include <climits>
 #include <string>
 
@@ -175,6 +176,7 @@ public:
   void enter(int32_t xAbs, int32_t yAbs, uint32_t seqNum, KeyModifierMask mask, bool forScreensaver) override;
   bool leave() override;
   void setClipboard(ClipboardID, const IClipboard *) override;
+  bool publishTransferredFiles(const QStringList &paths);
   void grabClipboard(ClipboardID) override;
   void setClipboardDirty(ClipboardID, bool) override;
   void keyDown(KeyID, KeyModifierMask, KeyButton, const std::string &) override;

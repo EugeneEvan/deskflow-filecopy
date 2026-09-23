@@ -10,6 +10,8 @@
 #include "base/IEventQueue.h"
 #include "client/Client.h"
 #include "client/ServerProxy.h"
+#include "client/ServerProxyFileTransfer.h"
+#include "common/Settings.h"
 #include "deskflow/AppUtil.h"
 #include "deskflow/ProtocolTypes.h"
 #include "io/IStream.h"
@@ -23,6 +25,7 @@
 #include <functional>
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -79,8 +82,14 @@ public:
     return static_cast<uint32_t>(bytesToRead);
   }
 
-  void write(const void *, uint32_t) override
+  void write(const void *data, uint32_t size) override
   {
+    m_output.append(static_cast<const char *>(data), size);
+  }
+
+  std::string takeOutput()
+  {
+    return std::exchange(m_output, {});
   }
 
   void flush() override
@@ -118,6 +127,7 @@ public:
 private:
   std::deque<std::string> m_chunks;
   bool m_inputShutdown = false;
+  std::string m_output;
 };
 
 class RecordingEventQueue : public IEventQueue
@@ -246,6 +256,21 @@ public:
   }
 };
 
+class TestFileServerProxy : public ServerProxyFileTransfer
+{
+public:
+  using ServerProxyFileTransfer::onOptionsChanged;
+
+protected:
+  ConnectionResult parseHandshakeMessage(const uint8_t *code) override
+  {
+    // The initial screen handshake is outside this test's fake Client.
+    // Still use the real event-driven frame reader and extension parser.
+    return ServerProxyFileTransfer::parseMessage(code);
+  }
+  using ServerProxyFileTransfer::ServerProxyFileTransfer;
+};
+
 Client *undereferenceableClient()
 {
   // These paths must queue cleanup without calling through to Client.
@@ -272,6 +297,14 @@ void ServerProxyTests::initTestCase()
 {
   (void)testAppUtil();
   m_log.setFilter(LogLevel::Level::Debug);
+  QVERIFY(m_settingsDirectory.isValid());
+  m_originalSettings = Settings::settingsFile();
+  Settings::setSettingsFile(m_settingsDirectory.filePath("protocol-client-tests.conf"));
+}
+
+void ServerProxyTests::cleanupTestCase()
+{
+  Settings::setSettingsFile(m_originalSettings);
 }
 
 void ServerProxyTests::handleKeepAliveAlarm_timeout_queuesDisconnectRequest()
@@ -326,6 +359,65 @@ void ServerProxyTests::parseHandshakeMessage_protocolError_queuesRefusalRequest(
   QVERIFY(request->kind() == Client::DisconnectRequest::Kind::Refuse);
   QVERIFY(request->refusalReason() == deskflow::core::ConnectionRefusal::ProtocolError);
   QCOMPARE(QString::fromUtf8(request->message()), QStringLiteral("server reported a protocol error"));
+}
+
+void ServerProxyTests::fileCopyOptionsRequireMatchingCapability()
+{
+#ifndef Q_OS_WIN
+  QSKIP("File copying is currently Windows only");
+#endif
+  Settings::setValue(Settings::Core::FileTransferEnabled, true);
+  Settings::setValue(Settings::Security::TlsEnabled, true);
+  Settings::setValue(Settings::Server::EnableClipboard, true);
+  RecordingEventQueue events;
+  FakeStream stream;
+  TestFileServerProxy proxy(undereferenceableClient(), &stream, &events);
+  // Exercise the production capability handler used after DSOP decoding.
+  // Stock 1.8 options and unknown extension versions must remain silent.
+  proxy.onOptionsChanged({kOptionClipboardSharing, 1});
+  QVERIFY(stream.takeOutput().empty());
+  proxy.onOptionsChanged({kOptionFileCopy, 1});
+  QVERIFY(stream.takeOutput().empty());
+  proxy.onOptionsChanged({kOptionFileCopy, kFileCopyCapability});
+  QCOMPARE(stream.takeOutput(), std::string("FCHL"));
+  QVERIFY(!proxy.canTransferFiles()); // FCHA has not arrived yet.
+  proxy.onOptionsChanged({kOptionFileCopy, kFileCopyCapability});
+  QVERIFY(stream.takeOutput().empty());
+}
+
+void ServerProxyTests::fileCopyDisabledDoesNotSendHello()
+{
+  Settings::setValue(Settings::Core::FileTransferEnabled, false);
+  RecordingEventQueue events;
+  FakeStream stream;
+  TestFileServerProxy proxy(undereferenceableClient(), &stream, &events);
+  proxy.onOptionsChanged({kOptionFileCopy, kFileCopyCapability});
+  QVERIFY(stream.takeOutput().empty());
+  QVERIFY(!proxy.canTransferFiles());
+}
+
+void ServerProxyTests::fileCopyAcknowledgmentUsesMessageParser()
+{
+#ifndef Q_OS_WIN
+  QSKIP("File copying is currently Windows only");
+#endif
+  Settings::setValue(Settings::Core::FileTransferEnabled, true);
+  Settings::setValue(Settings::Security::TlsEnabled, true);
+  Settings::setValue(Settings::Server::EnableClipboard, true);
+  RecordingEventQueue events;
+  FakeStream stream;
+  TestFileServerProxy proxy(undereferenceableClient(), &stream, &events);
+  proxy.onOptionsChanged({kOptionFileCopy, kFileCopyCapability});
+  QCOMPARE(stream.takeOutput(), std::string("FCHL"));
+  QVERIFY(!proxy.canTransferFiles());
+  stream.push("FCHA");
+  QVERIFY(events.dispatchEvent(Event(EventTypes::StreamInputReady, stream.getEventTarget())));
+  QVERIFY(proxy.canTransferFiles());
+  QVERIFY(events.addedEvents().empty());
+  stream.push("FCHA");
+  QVERIFY(events.dispatchEvent(Event(EventTypes::StreamInputReady, stream.getEventTarget())));
+  QCOMPARE(events.addedEvents().size(), size_t(1));
+  QCOMPARE(events.addedEvents().front().getType(), EventTypes::ClientDisconnectRequested);
 }
 
 QTEST_MAIN(ServerProxyTests)

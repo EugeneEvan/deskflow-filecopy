@@ -417,6 +417,10 @@ Do you want to connect to the server?
         <translation type="unfinished">Su clave TLS actual es más pequeña que el tamaño mínimo permitido. Se generará una nueva clave de 2048 bits.</translation>
     </message>
     <message>
+        <source>Cancelling file transfer...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Address missing</source>
         <translation type="unfinished">Dirección faltante</translation>
     </message>
@@ -455,6 +459,58 @@ Do you want to connect to the server?
     <message>
         <source>%1 Connection Error</source>
         <translation>%1 Error de conexión</translation>
+    </message>
+    <message>
+        <source>Preparing files...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sending files %p%</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Receiving files %p%</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sent %1 / %2. Wait until the receiving computer is ready before pasting.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Received %1 / %2. Wait until the transfer finishes before pasting.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Files ready to paste</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Files received. Press Ctrl+V in the destination folder to paste.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Files sent</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Files sent. Paste on the receiving computer when it reports that files are ready.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File transfer cancelled</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File transfer failed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File transfer interrupted</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cancel transfer</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>No IP Detected</source>
@@ -1168,6 +1224,14 @@ Al habilitar esta opción, se deshabilitará la interfaz gráfica de usuario (GU
         <translation type="unfinished">Salida de depuración detallada</translation>
     </message>
     <message>
+        <source>File copy is unavailable: enable TLS encryption on both computers.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File copy is unavailable: enable clipboard sharing in the server configuration.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>TLS Certificate Regenerated</source>
         <translation type="unfinished">Certificado TLS regenerado</translation>
     </message>
@@ -1254,6 +1318,18 @@ Al habilitar esta opción, se deshabilitará la interfaz gráfica de usuario (GU
     <message>
         <source>Remove all settings</source>
         <translation type="unfinished">Eliminar todas las configuraciones</translation>
+    </message>
+    <message>
+        <source>Enable file copy (Windows to Windows)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enable file copy and TLS on both computers, and clipboard sharing on the server. Files are cached first; press Ctrl+V in the destination folder when ready.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File copy requires a signed-in Windows user session. If the core runs as SYSTEM or in session 0, switch to Desktop mode.</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>

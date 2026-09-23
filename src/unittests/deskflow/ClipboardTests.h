@@ -24,6 +24,7 @@ private Q_SLOTS:
   void unMarshalLongerText();
   void unMarshalTextAndHtml();
   void equalClipboards();
+  void networkClipboardExcludesLocalFiles();
 
 private:
   const std::string kTestString1 = "deskflow rocks";

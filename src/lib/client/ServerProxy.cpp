@@ -14,6 +14,7 @@
 #include "deskflow/Clipboard.h"
 #include "deskflow/ClipboardChunk.h"
 #include "deskflow/DeskflowException.h"
+#include "deskflow/FileTransferProtocol.h"
 #include "deskflow/OptionTypes.h"
 #include "deskflow/ProtocolTypes.h"
 #include "deskflow/ProtocolUtil.h"
@@ -80,6 +81,7 @@ void ServerProxy::handleData()
 {
   // handle messages until there are no more.  first read message code.
   uint8_t code[4];
+  m_currentMessageSize = m_stream->getSize();
   uint32_t n = m_stream->read(code, 4);
   while (n != 0) {
     // verify we got an entire code
@@ -116,6 +118,7 @@ void ServerProxy::handleData()
     }
 
     // next message
+    m_currentMessageSize = m_stream->getSize();
     n = m_stream->read(code, 4);
   }
 
@@ -364,7 +367,10 @@ bool ServerProxy::onGrabClipboard(ClipboardID id)
 
 void ServerProxy::onClipboardChanged(ClipboardID id, const IClipboard *clipboard)
 {
-  std::string data = IClipboard::marshall(clipboard);
+  if (deskflow::filetransfer::containsFiles(clipboard)) {
+    return;
+  }
+  std::string data = IClipboard::marshall(clipboard, false);
   LOG_DEBUG("sending clipboard %d seqnum=%d", id, m_seqNum);
 
   StreamChunker::sendClipboard(data, data.size(), id, m_seqNum, m_events, this);
@@ -546,7 +552,8 @@ void ServerProxy::setClipboard()
 
     // forward
     Clipboard clipboard;
-    clipboard.unmarshall(m_clipboardDataCached, 0);
+    clipboard.unmarshall(m_clipboardDataCached, 0, false);
+    onRemoteClipboardChanged(id);
     m_client->setClipboard(id, &clipboard);
     m_clipboardDataCached.clear();
     m_clipboardDataCached.shrink_to_fit();
@@ -572,6 +579,7 @@ void ServerProxy::grabClipboard()
 
   // forward
   m_client->grabClipboard(id);
+  onRemoteClipboardChanged(id);
 }
 
 void ServerProxy::keyDown(uint16_t id, uint16_t mask, uint16_t button, const std::string &lang)
@@ -744,6 +752,7 @@ void ServerProxy::resetOptions()
 
   // forward
   m_client->resetOptions();
+  onOptionsReset();
 
   // reset keep alive
   setKeepAliveRate(kKeepAliveRate);
@@ -768,6 +777,7 @@ void ServerProxy::setOptions()
 
   // forward
   m_client->setOptions(options);
+  onOptionsChanged(options);
 
   // update modifier table
   for (uint32_t i = 0, n = (uint32_t)options.size(); i < n; i += 2) {

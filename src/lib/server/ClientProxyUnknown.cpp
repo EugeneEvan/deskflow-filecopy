@@ -23,6 +23,7 @@
 #include "server/ClientProxy1_6.h"
 #include "server/ClientProxy1_7.h"
 #include "server/ClientProxy1_8.h"
+#include "server/ClientProxyFileTransfer.h"
 #include "server/Server.h"
 
 //
@@ -174,7 +175,7 @@ void ClientProxyUnknown::initProxy(const std::string &name, int major, int minor
       break;
 
     case 8:
-      m_proxy = new ClientProxy1_8(name, m_stream, m_server, m_events);
+      m_proxy = new ClientProxyFileTransfer(name, m_stream, m_server, m_events);
       break;
 
     default:
