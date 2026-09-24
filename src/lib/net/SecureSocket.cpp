@@ -33,12 +33,6 @@ static const std::size_t s_maxInputBufferSize = 1024 * 1024;
 
 static const float s_retryDelay = 0.01f;
 
-struct Ssl
-{
-  SSL_CTX *m_context = nullptr;
-  SSL *m_ssl = nullptr;
-};
-
 static int verifyIgnoreCertCallback(X509_STORE_CTX *, void *)
 {
   return 1;
@@ -142,7 +136,11 @@ TCPSocket::JobResult SecureSocket::doRead()
     do {
       m_inputBuffer.write(buffer, bytesRead);
 
-      if (m_inputBuffer.getSize() > s_maxInputBufferSize) {
+      // Finish the current TLS record before yielding. Buffered plaintext
+      // has no socket readability notification of its own, so leaving it
+      // here can stall a transfer until unrelated network traffic arrives.
+      // This adds at most one record's remainder to the input buffer budget.
+      if (m_inputBuffer.getSize() > s_maxInputBufferSize && !hasBufferedRead()) {
         break;
       }
 
@@ -219,6 +217,12 @@ TCPSocket::JobResult SecureSocket::doWrite()
   }
 
   return Retry;
+}
+
+bool SecureSocket::hasBufferedRead()
+{
+  std::scoped_lock ssl_lock{ssl_mutex_};
+  return m_ssl && m_ssl->m_ssl && SSL_pending(m_ssl->m_ssl) > 0;
 }
 
 int SecureSocket::secureRead(void *buffer, int size, int &read)

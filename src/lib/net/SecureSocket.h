@@ -18,8 +18,14 @@ class IEventQueue;
 class SocketMultiplexer;
 class ISocketMultiplexerJob;
 class QString;
+struct ssl_ctx_st;
+struct ssl_st;
 
-struct Ssl;
+struct Ssl
+{
+  ssl_ctx_st *m_context = nullptr;
+  ssl_st *m_ssl = nullptr;
+};
 
 //! Secure socket
 /*!
@@ -27,6 +33,8 @@ A secure socket using SSL.
 */
 class SecureSocket : public TCPSocket
 {
+  friend class SecureSocketTests;
+
 public:
   SecureSocket(
       IEventQueue *events, SocketMultiplexer *socketMultiplexer, IArchNetwork::AddressFamily family,
@@ -73,6 +81,7 @@ private:
   void initContext(bool server);
   void createSSL();
   void freeSSL();
+  bool hasBufferedRead();
   int secureAccept(int s);
   int secureConnect(int s);
   bool showCertificate() const;
