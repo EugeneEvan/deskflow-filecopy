@@ -25,6 +25,8 @@ private Q_SLOTS:
   void wakeCallbackCanCancelWithoutHoldingSessionMutex();
   void missingAcknowledgement_timesOutBothPeersAndRemovesPartialCache();
   void cancellationRemovesPartialCache();
+  void cancellationReportsCleanupFailure_data();
+  void cancellationReportsCleanupFailure();
   void cancelledWindowTailCannotInvalidateNextBatch();
   void rapidReplacementBeforeAbortDeliveryReplacesIncomingBatch_data();
   void rapidReplacementBeforeAbortDeliveryReplacesIncomingBatch();
@@ -36,4 +38,7 @@ private Q_SLOTS:
   void batchLimitIsRejectedBeforeCreatingFiles();
   void simultaneousCopiesCancelBothDirections();
   void symlinkSourceIsRejected();
+  void manySmallFilesAndLongPathsHaveAccurateCounts();
+  void configuredCacheQuotaRejectsBeforeCreatingBatch();
+  void insufficientDiskSpaceOnSmallVolume();
 };

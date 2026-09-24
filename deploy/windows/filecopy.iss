@@ -57,9 +57,11 @@ RestartApplications=no
 AlwaysRestart=no
 SetupLogging=yes
 Uninstallable=yes
+UsePreviousTasks=yes
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: unchecked
+Name: "autostart"; Description: "Start Deskflow FileCopy when I sign in (desktop mode)"; Flags: unchecked
 
 [Files]
 Source: "{#PayloadDir}\*"; DestDir: "{app}"; Excludes: "\settings\*"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -70,9 +72,14 @@ Source: "{#PayloadDir}\settings\Deskflow.conf"; DestDir: "{app}\settings"; Flags
 [Icons]
 Name: "{group}\{#ProductName}"; Filename: "{app}\deskflow.exe"; WorkingDir: "{app}"
 Name: "{userdesktop}\{#ProductName}"; Filename: "{app}\deskflow.exe"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{userstartup}\{#ProductName}"; Filename: "{app}\deskflow.exe"; WorkingDir: "{app}"; Tasks: autostart
 
-; There is intentionally no [Run], service, firewall, startup, or process-killing
-; action. Start Deskflow FileCopy manually after closing other Deskflow versions.
+[InstallDelete]
+; Remove only this product's shortcut when login startup is disabled on upgrade.
+Type: files; Name: "{userstartup}\{#ProductName}.lnk"; Tasks: not autostart
+
+; There is intentionally no [Run], service, firewall, or process-killing action.
+; The optional startup shortcut runs in the signed-in user's desktop session.
 [Code]
 function NextButtonClick(CurPageID: Integer): Boolean;
 begin

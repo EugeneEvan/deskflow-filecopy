@@ -15,6 +15,8 @@ if(WIN32)
   set(EXE_ICON "IDI_ICON1 ICON DISCARDABLE \"${CMAKE_SOURCE_DIR}/src/apps/res/deskflow.ico\" ")
   configure_file(${CMAKE_SOURCE_DIR}/src/apps/res/windows.rc.in deskflow.rc)
   set(platform_extra deskflow.rc)
+  set_source_files_properties(deskflow.rc PROPERTIES
+    OBJECT_DEPENDS "${CMAKE_SOURCE_DIR}/src/apps/res/deskflow.ico")
 elseif(BUILD_OSX_BUNDLE)
   #setup our bundle plist file
   set(BUNDLE_EXECUTABLE_NAME "${target}")

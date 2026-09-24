@@ -44,6 +44,7 @@ private:
   void updateTlsControlsEnabled();
   void resetAllSettings();
   void updateText();
+  void manageFileCache();
 
   /// @brief Load all settings.
   void loadFromConfig();
@@ -84,6 +85,8 @@ private:
   void setButtonBoxEnabledButtons() const;
 
   bool m_interfaceSetOnLoad = false;
+  QString m_cachePath;
+  int m_cacheLimitGiB = 20;
   std::unique_ptr<Ui::SettingsDialog> ui;
   const ServerConfig &m_serverConfig;
   SettingsDialogButtonBox *m_buttonBox = nullptr;

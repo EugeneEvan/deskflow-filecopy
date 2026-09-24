@@ -38,6 +38,7 @@
 #include <QFileDialog>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLabel>
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QLocale>
@@ -52,6 +53,7 @@
 #include <QRegularExpressionValidator>
 #include <QScreen>
 #include <QScrollBar>
+#include <QVBoxLayout>
 
 #include <limits>
 #include <memory>
@@ -70,7 +72,9 @@ MainWindow::MainWindow()
       m_daemonIpcClient{new ipc::DaemonIpcClient(this)},
       m_logDock{new LogDock(this)},
       m_statusBar{new StatusBar(this)},
+      m_fileTransferPanel{new QWidget(this)},
       m_fileTransferProgress{new QProgressBar(this)},
+      m_fileTransferDetail{new QLabel(this)},
       m_cancelFileTransfer{new QPushButton(this)},
       m_menuFile{new QMenu(this)},
       m_menuEdit{new QMenu(this)},
@@ -90,7 +94,9 @@ MainWindow::MainWindow()
 {
   ui->setupUi(this);
 
-  setWindowIcon(QIcon::fromTheme(kRevFqdnName));
+  setWindowIcon(
+      deskflow::platform::isWindows() ? QIcon(QStringLiteral(":/deskflow.ico")) : QIcon::fromTheme(kRevFqdnName)
+  );
 
   addDockWidget(Qt::BottomDockWidgetArea, m_logDock);
 
@@ -240,11 +246,25 @@ void MainWindow::setupControls()
   m_fileTransferProgress->setRange(0, 1000);
   m_fileTransferProgress->setFixedWidth(220);
   m_fileTransferProgress->setTextVisible(true);
-  m_fileTransferProgress->hide();
+  updateFileTransferPalette();
+  m_fileTransferDetail->setObjectName(QStringLiteral("fileTransferDetail"));
+  m_fileTransferDetail->setTextFormat(Qt::PlainText);
+  m_fileTransferDetail->setWordWrap(true);
+  m_fileTransferDetail->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+  m_fileTransferDetail->setFixedWidth(220);
+  m_fileTransferDetail->setFixedHeight(m_fileTransferDetail->fontMetrics().lineSpacing() * 4);
+  auto *transferLayout = new QVBoxLayout(m_fileTransferPanel);
+  transferLayout->setContentsMargins(0, 0, 0, 0);
+  transferLayout->setSpacing(2);
+  transferLayout->addWidget(m_fileTransferProgress);
+  transferLayout->addWidget(m_fileTransferDetail);
+  m_fileTransferPanel->hide();
   m_cancelFileTransfer->setObjectName(QStringLiteral("cancelFileTransfer"));
   m_cancelFileTransfer->hide();
-  m_statusBar->addPermanentWidget(m_fileTransferProgress);
+  m_statusBar->addPermanentWidget(m_fileTransferPanel);
   m_statusBar->addPermanentWidget(m_cancelFileTransfer);
+  m_fileTransferClock.start();
+  m_fileTransferTimer.setInterval(250);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -295,10 +315,12 @@ void MainWindow::connectSlots()
   connect(&m_coreProcess, &CoreProcess::peerFingerprint, this, &MainWindow::handlePeerFingerprint);
   connect(&m_coreProcess, &CoreProcess::missingKeyboardLayouts, this, &MainWindow::handleMissingKeyboardLayouts);
   connect(&m_coreProcess, &CoreProcess::fileTransferStatusChanged, this, &MainWindow::handleFileTransferStatus);
+  connect(&m_fileTransferTimer, &QTimer::timeout, this, &MainWindow::updateFileTransferDisplay);
   connect(m_cancelFileTransfer, &QPushButton::clicked, this, [this] {
     m_coreProcess.cancelFileTransfer();
+    m_fileTransferCancelling = true;
     m_cancelFileTransfer->setEnabled(false);
-    m_fileTransferProgress->setFormat(tr("Cancelling file transfer..."));
+    updateFileTransferDisplay();
   });
 
   if (Settings::value(Settings::Gui::AutoStartCore).toBool()) {
@@ -753,6 +775,11 @@ void MainWindow::saveSettings() const
 
 void MainWindow::setTrayIcon()
 {
+  if (deskflow::platform::isWindows()) {
+    m_trayIcon->setIcon(QIcon(QStringLiteral(":/deskflow.ico")));
+    return;
+  }
+
   static const auto fallbackPath = QStringLiteral(":/icons/%1-%2/apps/64/%3");
 
   QString themeIcon = kRevFqdnName;
@@ -765,17 +792,6 @@ void MainWindow::setTrayIcon()
   }
 
   themeIcon.append(QStringLiteral("-symbolic"));
-
-  if (deskflow::platform::isWindows()) {
-    QSettings settings(
-        QStringLiteral("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"),
-        QSettings::NativeFormat
-    );
-    const QString theme = settings.value(QStringLiteral("SystemUsesLightTheme"), 1).toBool() ? QStringLiteral("light")
-                                                                                             : QStringLiteral("dark");
-    m_trayIcon->setIcon(QIcon(fallbackPath.arg(kAppId, theme, themeIcon)));
-    return;
-  }
 
   auto icon = QIcon::fromTheme(themeIcon, QIcon(fallbackPath.arg(kAppId, iconMode(), themeIcon)));
   icon.setIsMask(true);
@@ -966,6 +982,15 @@ void MainWindow::updateStatus()
   m_statusBar->setStatus(connection, process, isServer);
 }
 
+void MainWindow::updateFileTransferPalette()
+{
+  // Keep the native Fusion progress rendering; only change this widget's accent.
+  auto progressPalette = palette();
+  progressPalette.setColor(QPalette::Highlight, QColor(QStringLiteral("#b2bac4")));
+  progressPalette.setColor(QPalette::HighlightedText, QColor(QStringLiteral("#20252b")));
+  m_fileTransferProgress->setPalette(progressPalette);
+}
+
 void MainWindow::handleFileTransferStatus(const QString &statusJson)
 {
   QJsonParseError parseError;
@@ -975,65 +1000,140 @@ void MainWindow::handleFileTransferStatus(const QString &statusJson)
     return;
   }
 
-  const auto status = document.object();
-  const auto id = status.value(QStringLiteral("id")).toString();
-  const auto state = status.value(QStringLiteral("state")).toString();
-  const bool active = state == "preparing" || state == "receiving" || state == "sending";
-  if (!active && state != "ready" && state != "completed" && state != "cancelled" && state != "failed") {
-    qWarning("unknown file transfer state from core ipc");
+  if (!m_fileTransferModel.update(document.object(), m_fileTransferClock.elapsed())) {
+    qWarning("invalid file transfer state or counters from core ipc");
     return;
   }
 
+  const auto &status = m_fileTransferModel.status();
+  const auto &id = status.id;
+  const auto &state = status.state;
   const bool changed = id != m_fileTransferId || state != m_fileTransferState;
   m_fileTransferId = id;
   m_fileTransferState = state;
-  m_fileTransferProgress->show();
-  m_cancelFileTransfer->setVisible(active);
   if (changed)
-    m_cancelFileTransfer->setEnabled(active);
+    m_fileTransferCancelling = false;
+  if (status.active()) {
+    if (!m_fileTransferTimer.isActive())
+      m_fileTransferTimer.start();
+  } else {
+    m_fileTransferTimer.stop();
+  }
+  // Do not redraw for every ACK; the timer keeps rates current even if the
+  // connection stops producing progress events. Terminal states appear at once.
+  if (changed || !status.active())
+    updateFileTransferDisplay();
+
+  if (changed && (state == "ready" || state == "failed")) {
+    m_trayIcon->showMessage(
+        m_fileTransferProgress->format(), m_fileTransferProgress->toolTip(),
+        state == "failed" ? QSystemTrayIcon::Warning : QSystemTrayIcon::Information
+    );
+  }
+}
+
+void MainWindow::updateFileTransferDisplay()
+{
+  const auto &status = m_fileTransferModel.status();
+  if (status.state.isEmpty())
+    return;
+  const auto &state = status.state;
+  const auto metrics = m_fileTransferModel.metrics(m_fileTransferClock.elapsed());
+  m_cancelFileTransfer->setVisible(status.active());
+  m_cancelFileTransfer->setEnabled(status.active() && !m_fileTransferCancelling);
+  m_fileTransferProgress->setRange(0, 1000);
+  m_fileTransferProgress->setValue(metrics.progress);
+
+  const auto formatBytes = [](quint64 bytes) {
+    return QLocale().formattedDataSize(static_cast<qint64>(qMin<quint64>(bytes, std::numeric_limits<qint64>::max())));
+  };
+  const auto formatDuration = [this](quint64 seconds) {
+    if (seconds >= 3600)
+      return tr("%1 h %2 min").arg(seconds / 3600).arg((seconds % 3600) / 60);
+    if (seconds >= 60)
+      return tr("%1 min %2 s").arg(seconds / 60).arg(seconds % 60);
+    return tr("%1 s").arg(seconds);
+  };
+  QStringList summary;
+  if (state != "preparing") {
+    summary << tr("%1 / %2").arg(formatBytes(status.bytesDone), formatBytes(status.bytesTotal));
+    if (status.hasFileCounts) {
+      const auto done = QLocale().toString(status.filesDone);
+      if (status.filesTotal > 0)
+        summary << tr("Files: %1 / %2").arg(done, QLocale().toString(status.filesTotal));
+      else if (state == "receiving" || state == "ready")
+        summary << tr("Files received: %1").arg(done);
+      else
+        summary << tr("Files: %1").arg(done);
+    }
+  }
 
   QString message;
   QString detail;
   if (state == "preparing") {
     message = tr("Preparing files...");
-    m_fileTransferProgress->setValue(0);
+    detail = tr("Scanning files before transfer. Speed and remaining time will appear after transfer starts.");
+    summary << message;
   } else if (state == "receiving" || state == "sending") {
-    // QString counters avoid precision loss when the core serializes 64-bit byte counts.
-    const auto received = status.value(QStringLiteral("received")).toVariant().toULongLong();
-    const auto total = status.value(QStringLiteral("total")).toVariant().toULongLong();
-    const auto ratio = total == 0 ? 0.0 : qMin(1.0, static_cast<double>(received) / static_cast<double>(total));
-    m_fileTransferProgress->setValue(static_cast<int>(ratio * 1000));
-    message = state == "sending" ? tr("Sending files %p%") : tr("Receiving files %p%");
-    const auto formatBytes = [](quint64 bytes) {
-      return QLocale().formattedDataSize(static_cast<qint64>(qMin<quint64>(bytes, std::numeric_limits<qint64>::max())));
-    };
-    detail = (state == "sending" ? tr("Sent %1 / %2. Wait until the receiving computer is ready before pasting.")
-                                 : tr("Received %1 / %2. Wait until the transfer finishes before pasting."))
-                 .arg(formatBytes(received), formatBytes(total));
+    if (status.awaitingCompletion()) {
+      message = state == "sending" ? tr("Waiting for confirmation...") : tr("Checking received files...");
+      summary << message;
+    } else if (status.bytesTotal == 0) {
+      message =
+          state == "sending" ? tr("Sending empty files and folders...") : tr("Receiving empty files and folders...");
+    } else {
+      message = state == "sending" ? tr("Sending files %p%") : tr("Receiving files %p%");
+      const auto speed =
+          metrics.bytesPerSecond
+              ? tr("%1/s").arg(formatBytes(
+                    static_cast<quint64>(
+                        qMin(*metrics.bytesPerSecond, static_cast<double>(std::numeric_limits<qint64>::max()))
+                    )
+                ))
+              : tr("Speed: --");
+      const auto remaining = metrics.secondsRemaining
+                                 ? tr("%1 remaining").arg(formatDuration(*metrics.secondsRemaining))
+                                 : tr("Remaining: --");
+      summary << tr("%1 · %2").arg(speed, remaining);
+    }
+    detail = state == "sending" ? tr("Wait until the receiving computer is ready before pasting.")
+                                : tr("Wait until the transfer finishes before pasting.");
   } else if (state == "ready") {
-    m_fileTransferProgress->setValue(1000);
     message = tr("Files ready to paste");
     detail = tr("Files received. Press Ctrl+V in the destination folder to paste.");
+    summary << tr("Press Ctrl+V in the destination folder.");
   } else if (state == "completed") {
-    m_fileTransferProgress->setValue(1000);
     message = tr("Files sent");
     detail = tr("Files sent. Paste on the receiving computer when it reports that files are ready.");
+    summary << tr("Paste on the receiving computer.");
   } else if (state == "cancelled") {
     message = tr("File transfer cancelled");
-    detail = status.value(QStringLiteral("error")).toString();
+    detail = status.error;
+    summary = {message};
   } else {
     message = tr("File transfer failed");
-    detail = status.value(QStringLiteral("error")).toString();
+    detail = status.error;
+    summary = {message, tr("Hover here for details.")};
   }
+  if (m_fileTransferCancelling)
+    message = tr("Cancelling file transfer...");
 
   m_fileTransferProgress->setFormat(message);
   m_fileTransferProgress->setAccessibleName(message);
-  m_fileTransferProgress->setToolTip(detail.isEmpty() ? message : detail);
-  if (changed && (state == "ready" || state == "failed")) {
-    m_trayIcon->showMessage(
-        message, detail.isEmpty() ? message : detail,
-        state == "failed" ? QSystemTrayIcon::Warning : QSystemTrayIcon::Information
-    );
+  const auto summaryText = summary.join('\n');
+  m_fileTransferDetail->setText(summaryText);
+  m_fileTransferDetail->setAccessibleName(summaryText);
+  const auto toolTip = detail.isEmpty() ? summaryText : summaryText + '\n' + detail;
+  m_fileTransferProgress->setToolTip(toolTip);
+  m_fileTransferDetail->setToolTip(toolTip);
+  if (m_fileTransferPanel->isHidden()) {
+    m_fileTransferPanel->show();
+    m_statusBar->layout()->activate();
+    layout()->activate();
+    // The compact window uses a fixed size. Make room vertically for details
+    // without allowing changing byte counts or ETA text to widen the window.
+    if (!Settings::value(Settings::Gui::LogExpanded).toBool() && height() < sizeHint().height())
+      setFixedHeight(sizeHint().height());
   }
 }
 
@@ -1043,7 +1143,13 @@ void MainWindow::coreProcessStateChanged(ProcessState state)
   if (state == Stopped &&
       (m_fileTransferState == "preparing" || m_fileTransferState == "receiving" || m_fileTransferState == "sending")) {
     m_fileTransferState = QStringLiteral("failed");
+    m_fileTransferTimer.stop();
+    m_fileTransferModel.reset();
+    m_fileTransferCancelling = false;
     m_fileTransferProgress->setFormat(tr("File transfer interrupted"));
+    m_fileTransferDetail->setText(tr("File transfer interrupted"));
+    m_fileTransferProgress->setToolTip(tr("File transfer interrupted"));
+    m_fileTransferDetail->setToolTip(tr("File transfer interrupted"));
     m_cancelFileTransfer->hide();
   }
   updateStatus();
@@ -1120,8 +1226,11 @@ void MainWindow::changeEvent(QEvent *e)
   QMainWindow::changeEvent(e);
   if (e->type() == QEvent::PaletteChange) {
     updateIconTheme();
-    setWindowIcon(QIcon::fromTheme(kRevFqdnName));
+    setWindowIcon(
+        deskflow::platform::isWindows() ? QIcon(QStringLiteral(":/deskflow.ico")) : QIcon::fromTheme(kRevFqdnName)
+    );
     setTrayIcon();
+    updateFileTransferPalette();
   } else if (e->type() == QEvent::LanguageChange) {
     ui->retranslateUi(this);
     updateModeControlLabels();
@@ -1149,6 +1258,7 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 void MainWindow::updateText()
 {
   m_cancelFileTransfer->setText(tr("Cancel transfer"));
+  updateFileTransferDisplay();
   m_menuFile->setTitle(tr("&File"));
   m_menuEdit->setTitle(tr("&Edit"));
   m_menuView->setTitle(tr("&View"));

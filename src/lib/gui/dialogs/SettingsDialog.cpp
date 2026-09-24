@@ -7,6 +7,8 @@
  */
 
 #include "SettingsDialog.h"
+#include "FileTransferCacheDialog.h"
+#include "common/FileTransferCache.h"
 #include "common/LogLevel.h"
 #include "common/PlatformInfo.h"
 #include "ui_SettingsDialog.h"
@@ -55,6 +57,13 @@ SettingsDialog::SettingsDialog(QWidget *parent, const ServerConfig &serverConfig
   ui->rbIconMono->setIcon(QIcon::fromTheme(QStringLiteral("%1-symbolic").arg(kRevFqdnName)));
   ui->rbIconColorful->setIcon(QIcon::fromTheme(kRevFqdnName));
 
+  // Windows uses the fixed black pointer for both the taskbar and tray.
+  if (deskflow::platform::isWindows()) {
+    ui->lblTrayIconStyle->hide();
+    ui->rbIconMono->hide();
+    ui->rbIconColorful->hide();
+  }
+
   // force the first tab, since qt creator sets the active tab as the last one
   // the developer was looking at, and it's easy to accidentally save that.
   ui->tabWidget->setCurrentIndex(0);
@@ -97,6 +106,7 @@ void SettingsDialog::changeEvent(QEvent *e)
 
 void SettingsDialog::initConnections() const
 {
+  connect(ui->btnFileCache, &QPushButton::clicked, this, &SettingsDialog::manageFileCache);
   connect(m_buttonBox, &SettingsDialogButtonBox::accepted, this, &SettingsDialog::accept);
   connect(m_buttonBox, &SettingsDialogButtonBox::rejected, this, &QDialog::reject);
   connect(m_buttonBox, &SettingsDialogButtonBox::reset, this, &SettingsDialog::loadFromConfig);
@@ -222,6 +232,8 @@ void SettingsDialog::updateText()
 
 void SettingsDialog::accept()
 {
+  Settings::setValue(Settings::Core::FileTransferCachePath, m_cachePath);
+  Settings::setValue(Settings::Core::FileTransferCacheLimitGiB, m_cacheLimitGiB);
   Settings::setValue(Settings::Core::Port, ui->sbPort->value());
   Settings::setValue(Settings::Core::Interface, ui->comboInterface->currentData());
   Settings::setValue(Settings::Log::Level, ui->comboLogLevel->currentData());
@@ -258,6 +270,9 @@ void SettingsDialog::accept()
 
 void SettingsDialog::loadFromConfig()
 {
+  m_cachePath = Settings::value(Settings::Core::FileTransferCachePath).toString();
+  m_cacheLimitGiB = Settings::value(Settings::Core::FileTransferCacheLimitGiB).toInt();
+  ui->btnFileCache->setVisible(deskflow::platform::isWindows());
   ui->sbPort->setValue(Settings::value(Settings::Core::Port).toInt());
   ui->comboLogLevel->setCurrentIndex(
       ui->comboLogLevel->findData(Settings::logLevelText(), Qt::UserRole, Qt::MatchFixedString)
@@ -387,6 +402,7 @@ void SettingsDialog::updateControls()
   const bool writable = Settings::isWritable();
   const bool serviceChecked = ui->groupService->isChecked();
   const bool logToFile = ui->groupLogToFile->isChecked();
+  ui->btnFileCache->setEnabled(writable);
 
   ui->sbPort->setEnabled(writable);
   ui->comboInterface->setEnabled(writable);
@@ -443,6 +459,8 @@ bool SettingsDialog::isModified() const
   const bool ignoreInterface = !m_interfaceSetOnLoad && (ui->comboInterface->currentIndex() == 0);
 
   bool modified =
+      (m_cachePath != Settings::value(Settings::Core::FileTransferCachePath).toString()) ||
+      (m_cacheLimitGiB != Settings::value(Settings::Core::FileTransferCacheLimitGiB).toInt()) ||
       (ui->sbPort->value() != Settings::value(Settings::Core::Port).toInt()) ||
       (ui->comboLogLevel->currentData() != Settings::logLevelText()) ||
       (ui->groupLogToFile->isChecked() != Settings::value(Settings::Log::ToFile).toBool()) ||
@@ -479,6 +497,8 @@ bool SettingsDialog::isDefault() const
       static_cast<int>(LogLevel::fromOption(Settings::defaultValue(Settings::Log::Level).toString()));
 
   return (
+      (m_cachePath == Settings::defaultValue(Settings::Core::FileTransferCachePath).toString()) &&
+      (m_cacheLimitGiB == Settings::defaultValue(Settings::Core::FileTransferCacheLimitGiB).toInt()) &&
       (ui->sbPort->value() == Settings::defaultValue(Settings::Core::Port).toInt()) &&
       (ui->comboLogLevel->currentIndex() == logLevelIndex) &&
       (ui->groupLogToFile->isChecked() == Settings::defaultValue(Settings::Log::ToFile).toBool()) &&
@@ -508,6 +528,8 @@ bool SettingsDialog::isDefault() const
 
 void SettingsDialog::resetToDefault()
 {
+  m_cachePath = Settings::defaultValue(Settings::Core::FileTransferCachePath).toString();
+  m_cacheLimitGiB = Settings::defaultValue(Settings::Core::FileTransferCacheLimitGiB).toInt();
   ui->sbPort->setValue(Settings::defaultValue(Settings::Core::Port).toInt());
   ui->comboLogLevel->setCurrentIndex(
       static_cast<int>(LogLevel::fromOption(Settings::defaultValue(Settings::Log::Level).toString()))
@@ -562,3 +584,13 @@ void SettingsDialog::setButtonBoxEnabledButtons() const
 }
 
 SettingsDialog::~SettingsDialog() = default;
+
+void SettingsDialog::manageFileCache()
+{
+  FileTransferCacheDialog dialog(m_cachePath, m_cacheLimitGiB, this);
+  if (dialog.exec() != QDialog::Accepted)
+    return;
+  m_cachePath = dialog.cachePath();
+  m_cacheLimitGiB = dialog.limitGiB();
+  setButtonBoxEnabledButtons();
+}

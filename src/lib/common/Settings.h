@@ -59,6 +59,8 @@ public:
     inline static const auto UseHooks = QStringLiteral("core/useHooks");
     inline static const auto Language = QStringLiteral("core/language");
     inline static const auto FileTransferEnabled = QStringLiteral("core/fileTransferEnabled");
+    inline static const auto FileTransferCachePath = QStringLiteral("core/fileTransferCachePath");
+    inline static const auto FileTransferCacheLimitGiB = QStringLiteral("core/fileTransferCacheLimitGiB");
     inline static const auto EnableEnterCommand = QStringLiteral("core/enableEnterCommand");
     inline static const auto ScreenEnterCommand = QStringLiteral("core/enterCommand");
     inline static const auto EnableExitCommand = QStringLiteral("core/enableExitCommand");
@@ -281,6 +283,8 @@ private:
     , Core::UseHooks
     , Core::Language
     , Core::FileTransferEnabled
+    , Core::FileTransferCachePath
+    , Core::FileTransferCacheLimitGiB
     , Daemon::ConfigFile
     , Daemon::Elevate
     , Daemon::LogFile

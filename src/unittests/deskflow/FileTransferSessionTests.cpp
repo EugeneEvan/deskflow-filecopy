@@ -5,11 +5,13 @@
  */
 
 #include "FileTransferSessionTests.h"
+#include "common/FileTransferCache.h"
 #include "deskflow/FileTransferSession.h"
 
 #include <QDir>
 #include <QElapsedTimer>
 #include <QFile>
+#include <QStorageInfo>
 #include <QTemporaryDir>
 #include <QUuid>
 #include <QtEndian>
@@ -94,6 +96,20 @@ QByteArray maliciousEntry(const QByteArray &original, const QString &path)
   result.append(utf8);
   result.append(original.right(9)); // directory flag and expected size
   return result;
+}
+
+QByteArray beginWithSize(quint64 size)
+{
+  QByteArray packet;
+  append32(packet, 0x44464631);
+  packet.append('\1');
+  packet.append('\1');
+  packet.append(QUuid::createUuid().toRfc4122());
+  append32(packet, 0);
+  append32(packet, 1);
+  size = qToBigEndian(size);
+  packet.append(reinterpret_cast<const char *>(&size), 8);
+  return packet;
 }
 } // namespace
 
@@ -497,7 +513,7 @@ void FileTransferSessionTests::missingAcknowledgement_timesOutBothPeersAndRemove
   QVERIFY(receivedBytes < static_cast<quint64>(contents.size()));
   const auto batches = QDir(cache.path()).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
   QCOMPARE(batches.size(), 1);
-  const auto partialPath = cache.filePath(batches[0] + "/file");
+  const auto partialPath = cache.filePath(batches[0] + "/files/file");
   QVERIFY(QFileInfo(partialPath).size() > 0);
   QVERIFY(QFileInfo(partialPath).size() < contents.size());
 
@@ -544,6 +560,54 @@ void FileTransferSessionTests::cancellationRemovesPartialCache()
   QVERIFY(spin([&] { return cancelled; }, sourceSession, &receiver));
   QVERIFY(!published);
   QVERIFY(QDir(cache.path()).entryList(QDir::AllEntries | QDir::NoDotAndDotDot).isEmpty());
+}
+
+void FileTransferSessionTests::cancellationReportsCleanupFailure_data()
+{
+  QTest::addColumn<bool>("remoteAbort");
+  QTest::newRow("local-cancel") << false;
+  QTest::newRow("peer-abort") << true;
+}
+
+void FileTransferSessionTests::cancellationReportsCleanupFailure()
+{
+#ifdef Q_OS_WIN
+  QFETCH(bool, remoteAbort);
+  QTemporaryDir cache;
+  FileTransferSession::Progress latest{State::Preparing};
+  bool published = false;
+  FileTransferSession receiver(
+      {{}, [&](const QStringList &) { published = true; }, [&](const auto &update) { latest = update; }}, cache.path()
+  );
+  const auto begin = beginWithSize(1024);
+  receiver.receive(begin);
+  QVERIFY(spin([&] { return latest.state == State::Receiving; }, receiver));
+  const auto batches = QDir(cache.path()).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+  QCOMPARE(batches.size(), 1);
+  const auto marker = cache.filePath(batches.front() + "/.deskflow-filecopy-cache-v1");
+  const auto native = QDir::toNativeSeparators(marker);
+  const auto handle = CreateFileW(
+      reinterpret_cast<LPCWSTR>(native.utf16()), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING,
+      FILE_ATTRIBUTE_NORMAL, nullptr
+  );
+  QVERIFY(handle != INVALID_HANDLE_VALUE);
+  if (remoteAbort)
+    receiver.receive(abortOf(begin));
+  else
+    receiver.cancel(QStringLiteral("test cancellation"));
+  const bool finished =
+      spin([&] { return latest.state == State::Cancelled || latest.state == State::Failed; }, receiver);
+  CloseHandle(handle);
+  QVERIFY(finished);
+  QCOMPARE(latest.state, State::Failed);
+  QVERIFY2(latest.detail.contains("test cancellation"), qPrintable(latest.detail));
+  QVERIFY2(latest.detail.contains("cannot remove batch marker"), qPrintable(latest.detail));
+  QVERIFY(!published);
+  QVERIFY(QFileInfo::exists(marker));
+  QCOMPARE(deskflow::FileTransferCache::clean(cache.path()).removedBatches, 1);
+#else
+  QSKIP("Windows file sharing cleanup failure test");
+#endif
 }
 
 void FileTransferSessionTests::cancelledWindowTailCannotInvalidateNextBatch()
@@ -956,6 +1020,115 @@ void FileTransferSessionTests::symlinkSourceIsRejected()
   QVERIFY(spin([&] { return failed; }, session));
   QVERIFY(!sent);
   QCOMPARE(read(source.filePath("target")), QByteArray("contents"));
+}
+
+void FileTransferSessionTests::manySmallFilesAndLongPathsHaveAccurateCounts()
+{
+  QTemporaryDir source;
+  QTemporaryDir cache;
+  const auto root = source.filePath("small-files");
+  QVERIFY(QDir().mkpath(root + "/empty-directory"));
+  constexpr quint32 count = 300;
+  for (quint32 i = 0; i < count; ++i)
+    QVERIFY(write(root + '/' + QString::number(i), i % 2 ? QByteArray("small file") : QByteArray{}));
+  QString relative;
+  for (int i = 0; i < 5; ++i)
+    relative += '/' + QString(55, QChar('a' + i));
+  QVERIFY(QDir().mkpath(root + relative));
+  relative += "/long-path.txt";
+  QVERIFY(root.size() + relative.size() > 260);
+  QVERIFY(write(root + relative, "long path contents"));
+  QStringList published;
+  QString failure;
+  FileTransferSession::Progress sent{State::Preparing};
+  FileTransferSession::Progress received{State::Preparing};
+  FileTransferSession *receiverPtr = nullptr;
+  FileTransferSession sender(
+      {[&](const QByteArray &packet) { receiverPtr->receive(packet); },
+       {},
+       [&](const auto &update) {
+         sent = update;
+         if (update.state == State::Failed)
+           failure = update.detail;
+       }},
+      source.path()
+  );
+  FileTransferSession receiver(
+      {[&](const QByteArray &packet) { sender.receive(packet); }, [&](const QStringList &paths) { published = paths; },
+       [&](const auto &update) {
+         received = update;
+         if (update.state == State::Failed)
+           failure = update.detail;
+       }},
+      cache.path()
+  );
+  receiverPtr = &receiver;
+  sender.startSend({root});
+  QVERIFY(spin([&] { return !failure.isEmpty() || sent.state == State::Completed; }, sender, &receiver, 30000));
+  QVERIFY2(failure.isEmpty(), qPrintable(failure));
+  QCOMPARE(sent.filesDone, count + 1);
+  QCOMPARE(sent.filesTotal, count + 1);
+  QCOMPARE(received.state, State::Ready);
+  QCOMPARE(received.filesDone, count + 1);
+  QCOMPARE(received.filesTotal, count + 1);
+  QCOMPARE(published.size(), 1);
+  QCOMPARE(read(published.front() + relative), QByteArray("long path contents"));
+  for (quint32 i = 0; i < count; ++i) {
+    QVERIFY(QFileInfo::exists(published.front() + '/' + QString::number(i)));
+    QCOMPARE(read(published.front() + '/' + QString::number(i)), i % 2 ? QByteArray("small file") : QByteArray{});
+  }
+}
+
+void FileTransferSessionTests::configuredCacheQuotaRejectsBeforeCreatingBatch()
+{
+  QTemporaryDir cache;
+  QVERIFY(write(cache.filePath("legacy-cache.bin"), QByteArray(1024, 'x')));
+  QString failure;
+  bool published = false;
+  FileTransferSession receiver(
+      {{},
+       [&](const QStringList &) { published = true; },
+       [&](const auto &update) {
+         if (update.state == State::Failed)
+           failure = update.detail;
+       }},
+      cache.path(), 2048
+  );
+  receiver.receive(beginWithSize(2048));
+  QVERIFY(spin([&] { return !failure.isEmpty(); }, receiver));
+  QVERIFY2(failure.contains("quota exceeded"), qPrintable(failure));
+  QVERIFY(!published);
+  QVERIFY(QDir(cache.path()).entryList(QDir::Dirs | QDir::NoDotAndDotDot).isEmpty());
+  QCOMPARE(read(cache.filePath("legacy-cache.bin")), QByteArray(1024, 'x'));
+}
+
+void FileTransferSessionTests::insufficientDiskSpaceOnSmallVolume()
+{
+  const auto volume = qEnvironmentVariable("DESKFLOW_TEST_SMALL_VOLUME");
+  if (volume.isEmpty())
+    QSKIP("Set DESKFLOW_TEST_SMALL_VOLUME to an isolated small test volume to test actual free-space rejection");
+  QTemporaryDir cache(QDir(volume).filePath("cache-space-test-XXXXXX"));
+  QVERIFY(cache.isValid());
+  const QStorageInfo storage(cache.path());
+  constexpr quint64 incoming = 64ULL * 1024 * 1024;
+  QVERIFY(storage.isValid() && storage.isReady() && !storage.isReadOnly());
+  QVERIFY(storage.bytesAvailable() < static_cast<qint64>(incoming + 16 * 1024 * 1024));
+  QString failure;
+  bool published = false;
+  FileTransferSession receiver(
+      {{},
+       [&](const QStringList &) { published = true; },
+       [&](const auto &update) {
+         if (update.state == State::Failed)
+           failure = update.detail;
+       }},
+      cache.path()
+  );
+  receiver.receive(beginWithSize(incoming));
+  QVERIFY(spin([&] { return !failure.isEmpty(); }, receiver));
+  QVERIFY2(failure.contains("insufficient cache disk space"), qPrintable(failure));
+  QVERIFY(!published);
+  QVERIFY(QDir(cache.path()).entryList(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden).isEmpty());
 }
 
 QTEST_GUILESS_MAIN(FileTransferSessionTests)

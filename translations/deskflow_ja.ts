@@ -179,6 +179,85 @@ p, li { white-space: pre-wrap; }
     </message>
 </context>
 <context>
+    <name>FileTransferCacheDialog</name>
+    <message>
+        <source>File cache</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Browse...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cache folder</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Capacity limit</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Choose a dedicated local folder. Leave the path empty to use the default folder. Save Preferences and reconnect to apply changes. Existing files are not moved or automatically deleted.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open folder</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Refresh usage</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Clean received files...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cleanup removes only batches marked by this version. Current clipboard files are kept. Cleanup is unavailable while receiving. Older unmarked caches and unrelated files are kept.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Choose cache folder</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Clean received files</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Confirm that all pastes have finished and no application needs old received files. Remove this version&apos;s cached batches except those referenced by the current clipboard? This cannot be undone. Files already pasted elsewhere are unaffected.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Refresh to inspect this folder.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cleaning cache...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Inspecting cache...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cache operation failed: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Folder usage: %1. Managed batches: %2.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Removed %1 batches; kept %2 clipboard batches.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Some batches could not be removed:</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>FingerprintDialog</name>
     <message>
         <source>Local Fingerprints</source>
@@ -437,14 +516,6 @@ Do you want to connect to the server?
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Sent %1 / %2. Wait until the receiving computer is ready before pasting.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Received %1 / %2. Wait until the transfer finishes before pasting.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Files ready to paste</source>
         <translation type="unfinished"></translation>
     </message>
@@ -509,6 +580,94 @@ Do you want to connect to the server?
 A bound IP is now invalid, you may need to restart the server.</source>
         <translation>
 割り当て済みのIPアドレスが無効になりました。サーバーを再起動する必要があるかもしれません。</translation>
+    </message>
+    <message>
+        <source>%1 h %2 min</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 min %2 s</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 s</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 / %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Files: %1 / %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Files received: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Files: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Scanning files before transfer. Speed and remaining time will appear after transfer starts.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Waiting for confirmation...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Checking received files...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sending empty files and folders...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Receiving empty files and folders...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1/s</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Speed: --</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 remaining</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remaining: --</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 · %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Wait until the receiving computer is ready before pasting.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Wait until the transfer finishes before pasting.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Press Ctrl+V in the destination folder.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Paste on the receiving computer.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Hover here for details.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>&amp;File</source>
@@ -1335,6 +1494,10 @@ Enabling this setting will disable the server config GUI.</source>
     </message>
     <message>
         <source>File copy requires a signed-in Windows user session. If the core runs as SYSTEM or in session 0, switch to Desktop mode.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Manage file cache...</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

@@ -14,7 +14,7 @@ OutputDirectory must be outside the source tree. Each run creates a fresh stage.
   -CrtDirectory F:/deskflow-tools/msvc/VC/Redist/MSVC/14.44.35112/x64/Microsoft.VC143.CRT `
   -Dumpbin F:/deskflow-tools/msvc/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/dumpbin.exe `
   -Iscc F:/deskflow-tools/innosetup-6.7.3/ISCC.exe -OutputDirectory F:/deskflow-releases `
-  -Version 0.1.0 -ProjectUrl https://github.com/EugeneEvan/deskflow-filecopy
+  -Version 0.2.0 -ProjectUrl https://github.com/EugeneEvan/deskflow-filecopy
 #>
 [CmdletBinding()]
 param(
@@ -144,19 +144,31 @@ License: GPL-2.0-only with the existing OpenSSL exception. See LICENSE and LICEN
 File and folder clipboard transfer currently supports Windows to Windows ONLY.
 Install this release on both PCs and enable file transfer in Settings on both sides.
 Copy files in Explorer, wait until the receiving computer reports Ready, then paste.
-The first version uses a receiver cache; large files must finish transfer before paste.
+Files use a receiver cache; large files must finish transfer before paste.
+The main window shows bytes, file counts, recent transfer speed and estimated time.
+Speed and time are estimates and are hidden during preparation, verification or stalls.
 Cut/move, resume, drag and drop, and file transfer on macOS/Linux are not supported.
 
 Install into a writable folder of your choice (for example D:\Apps\Deskflow FileCopy).
 The installer uses a separate product identity and preserves existing settings.
-It does not install a service, start the app, or close a running Deskflow process.
+An optional task starts the app when the current user signs in; it is off by default.
+The installer remembers this choice on upgrade and removes its shortcut on uninstall.
+Complete configuration and connect once before using login startup. The app remembers
+whether its core was running when closed and restores that saved state when launched.
+It does not install a service, launch the app after installation, or close a running process.
 Close other Deskflow versions yourself before starting this version. Desktop mode
 cannot control the sign-in screen or secure UAC desktop. Allow Deskflow in Windows
 Firewall on your trusted private network when Windows requests it.
 
 The portable ZIP uses the same files; extract it before running deskflow.exe.
 Settings and TLS identity are stored under the application's settings directory.
-File-transfer caches currently use the Windows local application data directory.
+File-transfer caches default to the Windows local application data directory.
+Preferences > General > Manage file cache can select a dedicated local folder,
+set its quota (1-1024 GiB, default 20 GiB), inspect usage, and clean managed batches.
+Save preferences and reconnect to apply the new location and quota. Existing caches
+are not moved or deleted when the location changes. Network paths, drive roots and
+reparse points are not supported. Cleanup preserves current clipboard references,
+refuses to run during reception, and leaves legacy caches and unrelated files alone.
 Uninstall preserves settings and received files. Remove them yourself when no longer needed.
 
 Qt, OpenSSL, their runtime dependencies and the matching Microsoft Visual C++ runtime

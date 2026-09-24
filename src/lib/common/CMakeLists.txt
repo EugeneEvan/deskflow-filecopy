@@ -14,6 +14,8 @@ add_library(common STATIC
   Action.h
   Coordinate.h
   Enums.h
+  FileTransferCache.cpp
+  FileTransferCache.h
   ExitCodes.h
   Hotkey.cpp
   Hotkey.h
@@ -34,6 +36,9 @@ add_library(common STATIC
 )
 
 target_link_libraries(common PUBLIC Qt6::Core)
+if(WIN32)
+  target_link_libraries(common PUBLIC user32 shell32)
+endif()
 
 target_include_directories(common
   PUBLIC

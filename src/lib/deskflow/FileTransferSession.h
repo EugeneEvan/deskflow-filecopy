@@ -38,6 +38,9 @@ public:
     quint64 totalBytes = 0;
     QString detail;
     QString id;
+    quint32 filesDone = 0;
+    // 0 means unknown while receiving with the v1 streaming manifest.
+    quint32 filesTotal = 0;
   };
   struct Callbacks
   {
@@ -49,7 +52,9 @@ public:
     std::function<void()> wake;
   };
 
-  explicit FileTransferSession(Callbacks callbacks, QString cacheRoot = {});
+  explicit FileTransferSession(
+      Callbacks callbacks, QString cacheRoot = {}, quint64 cacheLimitBytes = 20ULL * 1024 * 1024 * 1024
+  );
   ~FileTransferSession();
   FileTransferSession(const FileTransferSession &) = delete;
   FileTransferSession &operator=(const FileTransferSession &) = delete;

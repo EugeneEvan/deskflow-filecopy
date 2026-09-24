@@ -9,12 +9,15 @@
 
 #pragma once
 
+#include <QElapsedTimer>
 #include <QMainWindow>
 #include <QProcess>
 #include <QRegularExpression>
 #include <QSystemTrayIcon>
+#include <QTimer>
 #include <QUrl>
 
+#include "FileTransferProgressModel.h"
 #include "VersionChecker.h"
 #include "config/ServerConfig.h"
 #include "gui/core/CoreProcess.h"
@@ -28,6 +31,7 @@
 class QAction;
 class QMenu;
 class QLocalServer;
+class QLabel;
 class QProgressBar;
 class QPushButton;
 
@@ -123,6 +127,8 @@ private:
   void handlePeerFingerprint(const QString &fingerprint);
   void handleMissingKeyboardLayouts(const QString &layouts);
   void handleFileTransferStatus(const QString &statusJson);
+  void updateFileTransferDisplay();
+  void updateFileTransferPalette();
   void closeEvent(QCloseEvent *event) override;
   bool maybeHideToTray();
   void secureSocket(bool secureSocket);
@@ -187,10 +193,16 @@ private:
 
   LogDock *m_logDock;
   StatusBar *m_statusBar = nullptr;
+  QWidget *m_fileTransferPanel = nullptr;
   QProgressBar *m_fileTransferProgress = nullptr;
+  QLabel *m_fileTransferDetail = nullptr;
   QPushButton *m_cancelFileTransfer = nullptr;
   QString m_fileTransferId;
   QString m_fileTransferState;
+  deskflow::gui::FileTransferProgressModel m_fileTransferModel;
+  QElapsedTimer m_fileTransferClock;
+  QTimer m_fileTransferTimer;
+  bool m_fileTransferCancelling = false;
 
   // Window Menu
   QMenu *m_menuFile = nullptr;

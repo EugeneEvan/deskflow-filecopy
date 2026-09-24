@@ -8,6 +8,7 @@
 
 #include "base/Event.h"
 #include "base/IEventQueue.h"
+#include "common/FileTransferCache.h"
 #include "common/Settings.h"
 #include "deskflow/Clipboard.h"
 #include "deskflow/ClipboardTypes.h"
@@ -24,6 +25,7 @@
 #include <atomic>
 #include <exception>
 #include <mutex>
+#include <stdexcept>
 
 #ifdef Q_OS_WIN
 #include <Windows.h>
@@ -230,11 +232,17 @@ void FileTransferBridge::setNegotiated(bool negotiated)
   callbacks.progress = [this](const auto &update) { progress(update); };
   callbacks.wake = [state = m_wakeState] { state->notify(); };
   try {
-    m_session = std::make_unique<FileTransferSession>(std::move(callbacks));
-  } catch (const std::exception &) {
+    const auto limit = Settings::value(Settings::Core::FileTransferCacheLimitGiB).toInt();
+    if (limit < 1 || limit > FileTransferCache::maxLimitGiB)
+      throw std::runtime_error("File cache capacity must be between 1 and 1024 GiB");
+    m_session = std::make_unique<FileTransferSession>(
+        std::move(callbacks), Settings::value(Settings::Core::FileTransferCachePath).toString(),
+        static_cast<quint64>(limit) * FileTransferCache::gibibyte
+    );
+  } catch (const std::exception &error) {
     m_negotiated = false;
     FileTransferSession::Progress update{FileTransferSession::State::Failed};
-    update.detail = QStringLiteral("File transfer session initialization failed");
+    update.detail = QString::fromUtf8(error.what());
     progress(update);
     return;
   }
@@ -397,6 +405,8 @@ void FileTransferBridge::progress(const FileTransferSession::Progress &update)
       {QStringLiteral("state"), state},
       {QStringLiteral("received"), static_cast<qint64>(update.doneBytes)},
       {QStringLiteral("total"), static_cast<qint64>(update.totalBytes)},
+      {QStringLiteral("filesDone"), QString::number(update.filesDone)},
+      {QStringLiteral("filesTotal"), QString::number(update.filesTotal)},
       {QStringLiteral("error"), detail}
   };
   ipcSendToClient(

@@ -6,6 +6,7 @@
 
 #include "Settings.h"
 
+#include "FileTransferCache.h"
 #include "LogLevel.h"
 #include "NetworkProtocol.h"
 #include "UrlConstants.h"
@@ -224,6 +225,12 @@ QVariant Settings::defaultValue(const QString &key)
 
   if (key == Core::Port)
     return 24800;
+
+  if (key == Core::FileTransferCachePath)
+    return QString();
+
+  if (key == Core::FileTransferCacheLimitGiB)
+    return deskflow::FileTransferCache::defaultLimitGiB;
 
   if (key == Core::ProcessMode) {
 #ifdef Q_OS_WIN

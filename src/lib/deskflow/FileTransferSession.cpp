@@ -5,9 +5,11 @@
  */
 
 #include "deskflow/FileTransferSession.h"
+#include "common/FileTransferCache.h"
 
 #include <QCryptographicHash>
 #include <QDateTime>
+#include <QDebug>
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
@@ -50,12 +52,6 @@ enum class Type : quint8
   Ack,
   Abort
 };
-struct CacheBudget
-{
-  std::mutex mutex;
-  QHash<QString, quint64> reservations;
-};
-const auto sharedCacheBudget = std::make_shared<CacheBudget>();
 
 void require(bool value, const char *message)
 {
@@ -237,6 +233,7 @@ struct FileTransferSession::Impl
       Progress
     } kind;
     quint64 deliveryEpoch = 0;
+    std::shared_ptr<QLockFile> cacheLease;
   };
   struct Sender
   {
@@ -248,6 +245,9 @@ struct FileTransferSession::Impl
     quint64 offset = 0;
     quint64 manifestBytes = 0;
     quint32 sequence = 0;
+    quint32 filesDone = 0;
+    quint32 filesTotal = 0;
+    QSet<quint32> pendingFileEnds;
     std::deque<quint32> outstanding;
     enum class Phase
     {
@@ -265,17 +265,19 @@ struct FileTransferSession::Impl
   {
     QByteArray id;
     QString directory;
+    QString batchDirectory;
+    std::shared_ptr<QLockFile> cacheLease;
     QStringList roots;
     QSet<QString> paths;
     QSet<QString> directories;
     quint32 expectedEntries = 0;
     quint32 entries = 0;
+    quint32 filesDone = 0;
     quint32 sequence = 0;
     quint64 total = 0;
     quint64 done = 0;
     quint64 fileSize = 0;
     quint64 offset = 0;
-    quint64 reservation = 0;
     quint64 manifestBytes = 0;
     QFile file;
     QCryptographicHash hash{QCryptographicHash::Sha256};
@@ -284,6 +286,7 @@ struct FileTransferSession::Impl
 
   Callbacks callbacks;
   QString cacheRoot;
+  quint64 cacheLimitBytes;
   std::mutex mutex;
   std::condition_variable wake;
   std::deque<Command> commands;
@@ -296,20 +299,16 @@ struct FileTransferSession::Impl
   std::unique_ptr<Sender> sender;
   std::unique_ptr<Receiver> receiver;
   QByteArray completedId;
-  std::shared_ptr<CacheBudget> cacheBudget = sharedCacheBudget;
-
-  Impl(Callbacks value, QString root) : callbacks(std::move(value)), cacheRoot(std::move(root))
+  std::weak_ptr<QLockFile> cacheLease;
+  Impl(Callbacks value, QString root, quint64 limit)
+      : callbacks(std::move(value)),
+        cacheRoot(FileTransferCache::validatedRoot(root)),
+        cacheLimitBytes(limit)
   {
-    if (cacheRoot.isEmpty()) {
-#ifdef Q_OS_WIN
-      cacheRoot = qEnvironmentVariable("LOCALAPPDATA");
-#else
-      cacheRoot = QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation);
-#endif
-      require(!cacheRoot.isEmpty(), "file transfer: user cache directory is unavailable");
-      cacheRoot = QDir(cacheRoot).filePath("Deskflow/file-transfer");
-    }
-    cacheRoot = QFileInfo(cacheRoot).absoluteFilePath();
+    require(
+        limit > 0 && limit <= FileTransferCache::maxLimitGiB * FileTransferCache::gibibyte,
+        "file transfer: invalid cache capacity"
+    );
   }
 
   void stop()
@@ -356,37 +355,35 @@ struct FileTransferSession::Impl
   {
     if (id.isEmpty())
       id = sender ? sender->id : (receiver ? receiver->id : QByteArray{});
+    const auto filesDone = sender ? sender->filesDone : (receiver ? receiver->filesDone : 0);
+    const auto filesTotal = sender ? sender->filesTotal : (state == State::Ready ? filesDone : 0);
     enqueueEvent(
         {workerGeneration,
          {},
          {},
-         {state, done, total, detail, id.isEmpty() ? QString{} : QUuid::fromRfc4122(id).toString(QUuid::WithoutBraces)},
+         {state, done, total, detail, id.isEmpty() ? QString{} : QUuid::fromRfc4122(id).toString(QUuid::WithoutBraces),
+          filesDone, filesTotal},
          Event::Kind::Progress}
     );
   }
 
-  void discardReceive()
+  QString discardReceive()
   {
     if (!receiver)
-      return;
+      return {};
+    QString cleanupError;
     receiver->file.close();
-    // Only the unique direct child created by this session can be removed.
-    if (!receiver->directory.isEmpty() && QFileInfo(receiver->directory).dir().absolutePath() == cacheRoot &&
-        !linked(receiver->directory))
-      QDir(receiver->directory).removeRecursively();
-    releaseReservation();
-    receiver.reset();
-  }
-
-  void releaseReservation()
-  {
-    std::lock_guard lock(cacheBudget->mutex);
-    if (receiver && receiver->reservation) {
-      cacheBudget->reservations[cacheRoot] -= receiver->reservation;
-      if (cacheBudget->reservations[cacheRoot] == 0)
-        cacheBudget->reservations.remove(cacheRoot);
-      receiver->reservation = 0;
+    if (!receiver->batchDirectory.isEmpty()) {
+      try {
+        FileTransferCache::removeBatch(cacheRoot, receiver->batchDirectory);
+      } catch (const std::exception &error) {
+        // Do not follow a reparse point or hide a failed cleanup. The marked
+        // batch can be retried from cache management after the cause is fixed.
+        cleanupError = QString::fromUtf8(error.what());
+      }
     }
+    receiver.reset();
+    return cleanupError;
   }
 
   void abort(const QString &reason, State state)
@@ -405,8 +402,11 @@ struct FileTransferSession::Impl
       send(packet(Type::Abort, completedId, 0, body));
     completedId.clear();
     sender.reset();
-    discardReceive();
-    progress(state, 0, 0, reason, id);
+    const auto cleanupError = discardReceive();
+    progress(
+        cleanupError.isEmpty() ? state : State::Failed, 0, 0,
+        cleanupError.isEmpty() ? reason : reason + QStringLiteral("; ") + cleanupError, id
+    );
   }
 
   bool interrupted() const
@@ -431,6 +431,8 @@ struct FileTransferSession::Impl
     const auto size = info.isDir() ? 0 : static_cast<quint64>(info.size());
     require(size <= maxBatchBytes - target.total, "file transfer: batch exceeds 10 GiB");
     target.total += size;
+    if (!info.isDir())
+      ++target.filesTotal;
     target.entries.push_back({info.absoluteFilePath(), relative, size, info.isDir(), info.lastModified()});
     if (info.isDir()) {
       require(info.isReadable(), "file transfer: source directory is unreadable");
@@ -549,6 +551,8 @@ struct FileTransferSession::Impl
       return;
     }
     const auto sequence = s.sequence++;
+    if (type == Type::FileEnd)
+      s.pendingFileEnds.insert(sequence);
     s.outstanding.push_back(sequence);
     s.touched = Clock::now();
     send(packet(type, s.id, sequence, body));
@@ -566,12 +570,13 @@ struct FileTransferSession::Impl
       const auto reason = QString::fromUtf8(input.field(1024));
       input.end();
       bool active = false;
+      QString cleanupError;
       if (sender && sender->id == id) {
         sender.reset();
         active = true;
       }
       if (receiver && receiver->id == id) {
-        discardReceive();
+        cleanupError = discardReceive();
         active = true;
       }
       // Complete can be queued for publication before the host pumps its events.
@@ -582,7 +587,10 @@ struct FileTransferSession::Impl
       }
       if (active) {
         invalidateEvents();
-        progress(State::Cancelled, 0, 0, reason, id);
+        progress(
+            cleanupError.isEmpty() ? State::Cancelled : State::Failed, 0, 0,
+            cleanupError.isEmpty() ? reason : reason + QStringLiteral("; ") + cleanupError, id
+        );
       }
       return;
     }
@@ -596,6 +604,8 @@ struct FileTransferSession::Impl
           "file transfer: unexpected acknowledgement"
       );
       sender->outstanding.pop_front();
+      if (sender->pendingFileEnds.remove(sequence))
+        ++sender->filesDone;
       sender->touched = Clock::now();
       if (sender->phase == Sender::Phase::Finished && sender->outstanding.empty()) {
         progress(State::Completed, sender->total, sender->total);
@@ -632,7 +642,14 @@ struct FileTransferSession::Impl
         QByteArray reason;
         putBytes(reason, QByteArray("file transfer: replaced by a new copy"));
         send(packet(Type::Abort, receiver->id, 0, reason));
-        discardReceive();
+        const auto cleanupError = discardReceive();
+        if (!cleanupError.isEmpty()) {
+          QByteArray body;
+          putBytes(body, cleanupError.toUtf8().left(1024));
+          send(packet(Type::Abort, id, 0, body));
+          progress(State::Failed, 0, 0, cleanupError, id);
+          return;
+        }
       }
       require(sequence == 0, "file transfer: invalid initial sequence");
       receiver = std::make_unique<Receiver>();
@@ -645,32 +662,19 @@ struct FileTransferSession::Impl
           next->expectedEntries > 0 && next->expectedEntries <= maxEntries && next->total <= maxBatchBytes,
           "file transfer: incoming batch exceeds limits"
       );
-      checkAncestors(cacheRoot);
-      require(QDir().mkpath(cacheRoot), "file transfer: cannot create cache root");
-      checkAncestors(cacheRoot);
+      next->cacheLease = cacheLease.lock();
+      if (!next->cacheLease) {
+        next->cacheLease = FileTransferCache::lock(cacheRoot);
+        cacheLease = next->cacheLease;
+      }
       QStorageInfo storage(cacheRoot);
       require(
-          storage.isValid() && storage.isReady() && !storage.isReadOnly() &&
-              storage.bytesAvailable() >= static_cast<qint64>(next->total + 16 * 1024 * 1024),
-          "file transfer: insufficient cache disk space"
+          storage.isValid() && storage.isReady() && !storage.isReadOnly(), "file transfer: cache disk is unavailable"
       );
-      {
-        std::lock_guard lock(cacheBudget->mutex);
-        quint64 cached = 0;
-        quint32 scanned = 0;
-        cacheUsage(cacheRoot, cached, scanned);
-        const auto reserved = cacheBudget->reservations.value(cacheRoot);
-        require(
-            reserved <= maxCacheBytes - cached && next->total <= maxCacheBytes - cached - reserved,
-            "file transfer: cache exceeds 20 GiB; clear old received files"
-        );
-        const auto name = QUuid::createUuid().toString(QUuid::WithoutBraces);
-        require(QDir(cacheRoot).mkdir(name), "file transfer: cannot create unique batch directory");
-        next->directory = QDir(cacheRoot).filePath(name);
-        if (next->total)
-          cacheBudget->reservations[cacheRoot] += next->total;
-        next->reservation = next->total;
-      }
+      const auto usage = FileTransferCache::inspect(cacheRoot, [this] { return interrupted(); });
+      FileTransferCache::requireCapacity(usage.bytes, next->total, cacheLimitBytes, storage.bytesAvailable());
+      next->batchDirectory = FileTransferCache::createBatch(cacheRoot);
+      next->directory = QDir(next->batchDirectory).filePath(QStringLiteral("files"));
     } else {
       // Late data from a cancelled batch must not invalidate a new copy.
       if (!receiver || receiver->id != id)
@@ -731,6 +735,7 @@ struct FileTransferSession::Impl
         );
         require(r.file.flush(), "file transfer: destination flush failed");
         r.file.close();
+        ++r.filesDone;
       } else if (type == Type::Complete) {
         input.end();
         require(
@@ -739,10 +744,11 @@ struct FileTransferSession::Impl
         );
         // Successful caches deliberately outlive connections: CF_HDROP readers
         // can open these paths after the peer has disconnected.
-        enqueueEvent({workerGeneration, {}, r.roots, {}, Event::Kind::Publish});
+        Event publication{workerGeneration, {}, r.roots, {}, Event::Kind::Publish};
+        publication.cacheLease = std::move(r.cacheLease);
+        enqueueEvent(std::move(publication));
         progress(State::Ready, r.done, r.total, {}, r.id);
         completedId = r.id;
-        releaseReservation();
         receiver.reset();
         send(packet(Type::Ack, id, sequence));
         return;
@@ -754,26 +760,6 @@ struct FileTransferSession::Impl
     receiver->touched = Clock::now();
     progress(State::Receiving, receiver->done, receiver->total, {}, receiver->id);
     send(packet(Type::Ack, id, sequence));
-  }
-
-  void cacheUsage(const QString &directory, quint64 &bytes, quint32 &entries, int depth = 0)
-  {
-    require(depth <= 65, "file transfer: cache directory depth exceeds limit");
-    QDirIterator children(directory, QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System);
-    while (children.hasNext()) {
-      children.next();
-      const auto child = children.fileInfo();
-      require(!interrupted(), "file transfer: cache inspection cancelled");
-      require(++entries <= 100000, "file transfer: cache contains too many entries; clear old received files");
-      require(!linked(child.absoluteFilePath()), "file transfer: cache contains a symlink or reparse point");
-      if (child.isDir()) {
-        cacheUsage(child.absoluteFilePath(), bytes, entries, depth + 1);
-      } else {
-        const auto size = static_cast<quint64>(child.size());
-        require(size <= maxCacheBytes - bytes, "file transfer: cache exceeds 20 GiB; clear old received files");
-        bytes += size;
-      }
-    }
   }
 
   void run()
@@ -813,7 +799,9 @@ struct FileTransferSession::Impl
       }
     }
     sender.reset();
-    discardReceive();
+    const auto cleanupError = discardReceive();
+    if (!cleanupError.isEmpty())
+      qWarning().noquote() << "file transfer: cleanup on shutdown failed:" << cleanupError;
     {
       std::lock_guard lock(mutex);
       finished = true;
@@ -832,8 +820,8 @@ struct FileTransferSession::Impl
   }
 };
 
-FileTransferSession::FileTransferSession(Callbacks callbacks, QString cacheRoot)
-    : m_impl(std::make_shared<Impl>(std::move(callbacks), std::move(cacheRoot)))
+FileTransferSession::FileTransferSession(Callbacks callbacks, QString cacheRoot, quint64 cacheLimitBytes)
+    : m_impl(std::make_shared<Impl>(std::move(callbacks), std::move(cacheRoot), cacheLimitBytes))
 {
   std::thread([state = m_impl] { state->run(); }).detach();
 }

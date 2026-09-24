@@ -179,6 +179,85 @@ p, li { white-space: pre-wrap; }
     </message>
 </context>
 <context>
+    <name>FileTransferCacheDialog</name>
+    <message>
+        <source>File cache</source>
+        <translation>文件缓存</translation>
+    </message>
+    <message>
+        <source>Browse...</source>
+        <translation>浏览…</translation>
+    </message>
+    <message>
+        <source>Cache folder</source>
+        <translation>缓存文件夹</translation>
+    </message>
+    <message>
+        <source>Capacity limit</source>
+        <translation>容量上限</translation>
+    </message>
+    <message>
+        <source>Choose a dedicated local folder. Leave the path empty to use the default folder. Save Preferences and reconnect to apply changes. Existing files are not moved or automatically deleted.</source>
+        <translation>请选择专用的本地文件夹；路径留空使用默认位置。保存首选项并重新连接后生效。已有文件不会移动或自动删除。</translation>
+    </message>
+    <message>
+        <source>Open folder</source>
+        <translation>打开文件夹</translation>
+    </message>
+    <message>
+        <source>Refresh usage</source>
+        <translation>刷新占用</translation>
+    </message>
+    <message>
+        <source>Clean received files...</source>
+        <translation>清理接收缓存…</translation>
+    </message>
+    <message>
+        <source>Cleanup removes only batches marked by this version. Current clipboard files are kept. Cleanup is unavailable while receiving. Older unmarked caches and unrelated files are kept.</source>
+        <translation>仅清理本版本标记的缓存批次，并保留当前剪贴板引用的文件。接收过程中不能清理。旧版未标记缓存和其他文件会保留。</translation>
+    </message>
+    <message>
+        <source>Choose cache folder</source>
+        <translation>选择缓存文件夹</translation>
+    </message>
+    <message>
+        <source>Clean received files</source>
+        <translation>清理接收缓存</translation>
+    </message>
+    <message>
+        <source>Confirm that all pastes have finished and no application needs old received files. Remove this version&apos;s cached batches except those referenced by the current clipboard? This cannot be undone. Files already pasted elsewhere are unaffected.</source>
+        <translation>请确认已完成所有粘贴操作，且其他程序不再使用旧接收文件。是否清理本版本的缓存批次，并保留当前剪贴板引用的批次？此操作无法撤销，已粘贴到其他位置的文件不受影响。</translation>
+    </message>
+    <message>
+        <source>Refresh to inspect this folder.</source>
+        <translation>点击刷新以查看此文件夹的占用。</translation>
+    </message>
+    <message>
+        <source>Cleaning cache...</source>
+        <translation>正在清理缓存…</translation>
+    </message>
+    <message>
+        <source>Inspecting cache...</source>
+        <translation>正在检查缓存…</translation>
+    </message>
+    <message>
+        <source>Cache operation failed: %1</source>
+        <translation>缓存操作失败：%1</translation>
+    </message>
+    <message>
+        <source>Folder usage: %1. Managed batches: %2.</source>
+        <translation>文件夹占用：%1。可管理批次：%2。</translation>
+    </message>
+    <message>
+        <source>Removed %1 batches; kept %2 clipboard batches.</source>
+        <translation>已清理 %1 个批次；保留了剪贴板引用的 %2 个批次。</translation>
+    </message>
+    <message>
+        <source>Some batches could not be removed:</source>
+        <translation>以下批次未能清理：</translation>
+    </message>
+</context>
+<context>
     <name>FingerprintDialog</name>
     <message>
         <source>Local Fingerprints</source>
@@ -421,6 +500,94 @@ Do you want to connect to the server?
         <translation>&lt;p&gt;连接到服务器“%1”失败。&lt;/p&gt;&lt;p&gt;一个同名的客户端已连接到服务器。&lt;/p&gt;请确保您使用的名称唯一，且只有一个客户端进程实例在运行。&lt;/p&gt;</translation>
     </message>
     <message>
+        <source>%1 h %2 min</source>
+        <translation>%1 小时 %2 分钟</translation>
+    </message>
+    <message>
+        <source>%1 min %2 s</source>
+        <translation>%1 分 %2 秒</translation>
+    </message>
+    <message>
+        <source>%1 s</source>
+        <translation>%1 秒</translation>
+    </message>
+    <message>
+        <source>%1 / %2</source>
+        <translation>%1 / %2</translation>
+    </message>
+    <message>
+        <source>Files: %1 / %2</source>
+        <translation>文件：%1 / %2</translation>
+    </message>
+    <message>
+        <source>Files received: %1</source>
+        <translation>已接收文件：%1</translation>
+    </message>
+    <message>
+        <source>Files: %1</source>
+        <translation>文件数：%1</translation>
+    </message>
+    <message>
+        <source>Scanning files before transfer. Speed and remaining time will appear after transfer starts.</source>
+        <translation>正在扫描待传输文件，开始传输后将显示速度和剩余时间。</translation>
+    </message>
+    <message>
+        <source>Waiting for confirmation...</source>
+        <translation>正在等待对方确认…</translation>
+    </message>
+    <message>
+        <source>Checking received files...</source>
+        <translation>正在校验接收文件…</translation>
+    </message>
+    <message>
+        <source>Sending empty files and folders...</source>
+        <translation>正在发送空文件和文件夹…</translation>
+    </message>
+    <message>
+        <source>Receiving empty files and folders...</source>
+        <translation>正在接收空文件和文件夹…</translation>
+    </message>
+    <message>
+        <source>%1/s</source>
+        <translation>%1/秒</translation>
+    </message>
+    <message>
+        <source>Speed: --</source>
+        <translation>速度：--</translation>
+    </message>
+    <message>
+        <source>%1 remaining</source>
+        <translation>剩余 %1</translation>
+    </message>
+    <message>
+        <source>Remaining: --</source>
+        <translation>剩余时间：--</translation>
+    </message>
+    <message>
+        <source>%1 · %2</source>
+        <translation>%1 · %2</translation>
+    </message>
+    <message>
+        <source>Wait until the receiving computer is ready before pasting.</source>
+        <translation>请等待接收端提示文件就绪后再粘贴。</translation>
+    </message>
+    <message>
+        <source>Wait until the transfer finishes before pasting.</source>
+        <translation>请等待传输完成后再粘贴。</translation>
+    </message>
+    <message>
+        <source>Press Ctrl+V in the destination folder.</source>
+        <translation>在目标文件夹按 Ctrl+V 粘贴。</translation>
+    </message>
+    <message>
+        <source>Paste on the receiving computer.</source>
+        <translation>请在接收电脑上粘贴。</translation>
+    </message>
+    <message>
+        <source>Hover here for details.</source>
+        <translation>将鼠标移到此处查看详情。</translation>
+    </message>
+    <message>
         <source>View &amp;Help</source>
         <translation type="unfinished">查看帮助(&amp;H)</translation>
     </message>
@@ -472,11 +639,11 @@ A bound IP is now invalid, you may need to restart the server.</source>
     </message>
     <message>
         <source>Sent %1 / %2. Wait until the receiving computer is ready before pasting.</source>
-        <translation>已发送 %1 / %2；请等待接收端完成后再粘贴。</translation>
+        <translation type="vanished">已发送 %1 / %2；请等待接收端完成后再粘贴。</translation>
     </message>
     <message>
         <source>Received %1 / %2. Wait until the transfer finishes before pasting.</source>
-        <translation>已接收 %1 / %2；请等待完成后再粘贴。</translation>
+        <translation type="vanished">已接收 %1 / %2；请等待完成后再粘贴。</translation>
     </message>
     <message>
         <source>Files ready to paste</source>
@@ -1336,6 +1503,10 @@ Enabling this setting will disable the server config GUI.</source>
     <message>
         <source>Enable file copy and TLS on both computers, and clipboard sharing on the server. Files are cached first; press Ctrl+V in the destination folder when ready.</source>
         <translation>两端均需启用文件复制和 TLS，服务端需开启剪贴板共享。先接收至缓存，完成后再到目标文件夹按 Ctrl+V。</translation>
+    </message>
+    <message>
+        <source>Manage file cache...</source>
+        <translation>管理文件缓存…</translation>
     </message>
 </context>
 <context>
