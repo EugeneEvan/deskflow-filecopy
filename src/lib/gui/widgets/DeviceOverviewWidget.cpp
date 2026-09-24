@@ -10,9 +10,9 @@
 #include <QFrame>
 #include <QGridLayout>
 #include <QGroupBox>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QResizeEvent>
-#include <QScrollArea>
 #include <QVBoxLayout>
 
 #include <algorithm>
@@ -54,26 +54,28 @@ QWidget *makeCard(const DeviceOverviewWidget::Device &device, QWidget *parent)
   card->setFrameShape(QFrame::StyledPanel);
   card->setBackgroundRole(device.local ? QPalette::AlternateBase : QPalette::Base);
   card->setAutoFillBackground(true);
-  card->setMinimumWidth(190);
+  card->setMinimumWidth(150);
   auto *layout = new QVBoxLayout(card);
-  layout->setContentsMargins(14, 12, 14, 12);
-  layout->setSpacing(7);
+  layout->setContentsMargins(10, 8, 10, 8);
+  layout->setSpacing(4);
+  layout->setAlignment(Qt::AlignTop);
 
+  auto *heading = new QHBoxLayout;
   auto *role = new DeviceLabel(device.role, card);
-  layout->addWidget(role);
+  heading->addWidget(role, 1);
+  auto *status = new QLabel(device.status, card);
+  status->setTextFormat(Qt::PlainText);
+  status->setObjectName(QStringLiteral("deviceStatus"));
+  heading->addWidget(status);
+  layout->addLayout(heading);
   auto *name = new DeviceLabel(device.name, card);
   auto font = name->font();
   font.setBold(true);
   font.setPointSizeF(font.pointSizeF() + 1);
   name->setFont(font);
   layout->addWidget(name);
-  layout->addWidget(new DeviceLabel(device.address, card));
-  auto *status = new DeviceLabel(device.status, card);
-  status->setObjectName(QStringLiteral("deviceStatus"));
-  font = status->font();
-  font.setBold(device.connected);
-  status->setFont(font);
-  layout->addWidget(status);
+  if (!device.address.isEmpty())
+    layout->addWidget(new DeviceLabel(device.address, card));
   return card;
 }
 
@@ -82,30 +84,20 @@ QWidget *makeCard(const DeviceOverviewWidget::Device &device, QWidget *parent)
 DeviceOverviewWidget::DeviceOverviewWidget(QWidget *parent)
     : QWidget(parent),
       m_group(new QGroupBox(this)),
-      m_grid(new QGridLayout()),
-      m_hint(new QLabel(this))
+      m_grid(new QGridLayout())
 {
   setObjectName(QStringLiteral("deviceOverview"));
   auto *layout = new QVBoxLayout(this);
   layout->setContentsMargins(0, 0, 0, 0);
   layout->addWidget(m_group);
   auto *groupLayout = new QVBoxLayout(m_group);
-  groupLayout->setContentsMargins(14, 20, 14, 12);
-  auto *area = new QScrollArea(m_group);
-  area->setObjectName(QStringLiteral("deviceScrollArea"));
-  area->setFrameShape(QFrame::NoFrame);
-  area->setWidgetResizable(true);
-  area->setMinimumHeight(157);
-  area->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-  auto *devices = new QWidget(area);
+  groupLayout->setContentsMargins(8, 12, 8, 6);
   m_grid->setContentsMargins(0, 0, 0, 0);
-  m_grid->setSpacing(12);
-  devices->setLayout(m_grid);
-  area->setWidget(devices);
-  groupLayout->addWidget(area);
-  m_hint->setTextFormat(Qt::PlainText);
-  m_hint->setWordWrap(true);
-  groupLayout->addWidget(m_hint);
+  m_grid->setSpacing(8);
+  groupLayout->addLayout(m_grid);
+  // The main page already scrolls. Keep cards at their content height rather
+  // than reserving a second scroll viewport with a large minimum height.
+  setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
   updateText();
 }
 
@@ -155,7 +147,7 @@ void DeviceOverviewWidget::changeEvent(QEvent *event)
 void DeviceOverviewWidget::updateText()
 {
   m_group->setTitle(tr("Device connection"));
-  m_hint->setText(
+  m_group->setToolTip(
       m_layoutKnown ? tr("Devices follow the configured screen positions. Move the pointer across a shared edge.")
                     : tr("Screen positions are configured on the server; this view only lists the known devices.")
   );

@@ -53,7 +53,9 @@ FileTransferWidget::FileTransferWidget(QWidget *parent)
   layout->setContentsMargins(0, 0, 0, 0);
   layout->addWidget(m_group);
   auto *panelLayout = new QVBoxLayout(m_group);
-  panelLayout->setSpacing(10);
+  panelLayout->setSpacing(5);
+  panelLayout->setContentsMargins(10, 12, 10, 6);
+  setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
   auto *header = new QHBoxLayout;
   header->addWidget(m_statusLabel, 1);
   header->addWidget(m_cancelButton, 0, Qt::AlignTop);
@@ -274,6 +276,9 @@ void FileTransferWidget::updateDisplay()
   );
   m_statusLabel->setText(message);
   m_detailLabel->setText(detail);
+  m_detailLabel->setVisible(m_interrupted || state == "failed" || !status.error.isEmpty());
+  m_statusLabel->setToolTip(detail);
+  m_progress->setVisible(!state.isEmpty());
   m_progress->setAccessibleName(message);
   m_progress->setAccessibleDescription(detail);
 }

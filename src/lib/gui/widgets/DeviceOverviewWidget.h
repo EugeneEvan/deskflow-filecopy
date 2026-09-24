@@ -11,7 +11,6 @@
 #include <QWidget>
 
 class QGridLayout;
-class QLabel;
 class QGroupBox;
 
 namespace deskflow::gui {
@@ -45,7 +44,6 @@ private:
   void updateText();
   QGroupBox *m_group;
   QGridLayout *m_grid;
-  QLabel *m_hint;
   QList<Device> m_devices;
   bool m_layoutKnown = false;
 };

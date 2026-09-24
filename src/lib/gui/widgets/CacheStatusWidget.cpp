@@ -34,6 +34,8 @@ CacheStatusWidget::CacheStatusWidget(QWidget *parent) : QWidget(parent)
   setObjectName(QStringLiteral("cacheStatusWidget"));
   auto *layout = new QVBoxLayout(this);
   layout->setContentsMargins(0, 0, 0, 0);
+  layout->setSpacing(4);
+  setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
   auto *heading = new QHBoxLayout;
   m_title = new QLabel(this);
   auto font = m_title->font();
@@ -41,7 +43,12 @@ CacheStatusWidget::CacheStatusWidget(QWidget *parent) : QWidget(parent)
   m_title->setFont(font);
   m_manage = new QPushButton(this);
   m_manage->setObjectName(QStringLiteral("manageFileCache"));
-  heading->addWidget(m_title, 1);
+  m_usageLabel = new QLabel(this);
+  m_usageLabel->setObjectName(QStringLiteral("cacheSummary"));
+  m_usageLabel->setTextFormat(Qt::PlainText);
+  m_usageLabel->setWordWrap(true);
+  heading->addWidget(m_title);
+  heading->addWidget(m_usageLabel, 1);
   heading->addWidget(m_manage);
   layout->addLayout(heading);
   m_pathLabel = new QLabel(this);
@@ -51,11 +58,6 @@ CacheStatusWidget::CacheStatusWidget(QWidget *parent) : QWidget(parent)
   m_pathLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
   m_pathLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
   layout->addWidget(m_pathLabel);
-  m_usageLabel = new QLabel(this);
-  m_usageLabel->setObjectName(QStringLiteral("cacheSummary"));
-  m_usageLabel->setTextFormat(Qt::PlainText);
-  m_usageLabel->setWordWrap(true);
-  layout->addWidget(m_usageLabel);
   m_timer = new QTimer(this);
   m_timer->setInterval(100);
   connect(m_timer, &QTimer::timeout, this, &CacheStatusWidget::finishInspection);
@@ -128,6 +130,8 @@ void CacheStatusWidget::updateText()
   m_pathLabel->setText(m_path.isEmpty() ? tr("Default cache folder") : QDir::toNativeSeparators(m_path));
   m_pathLabel->setToolTip(m_pathLabel->text());
   m_pathLabel->setAccessibleName(tr("Cache folder"));
+  m_pathLabel->setVisible(!m_error.isEmpty());
+  m_manage->setToolTip(m_pathLabel->text());
   if (m_work) {
     m_usageLabel->setText(tr("Inspecting cache..."));
   } else if (!m_error.isEmpty()) {

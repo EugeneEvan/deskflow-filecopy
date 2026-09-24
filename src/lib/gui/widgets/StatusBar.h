@@ -21,6 +21,7 @@ class StatusBar : public QStatusBar
   Q_OBJECT
 public:
   explicit StatusBar(QWidget *parent = nullptr);
+  void setCompact(bool compact);
   void setStatus(ConnectionState connectionState, ProcessState processState, bool isServer);
   void setServerClients(const QStringList &clients);
   void setSecurityIconVisible(bool visible);

@@ -197,12 +197,12 @@ void MainWindow::restoreWindow()
     targetScreen = QGuiApplication::primaryScreen();
   if (!targetScreen)
     return;
-  // Older versions saved a shallow, fixed-size window. Give the new content a
-  // useful initial height without making a small or scaled display unusable.
+  // Replace the previous oversized default, preserve custom sizes, and keep
+  // the window inside the available screen area on scaled displays.
   const auto available = targetScreen->availableGeometry().adjusted(8, 8, -8, -8);
-  QSize preferred = windowGeometry.isValid() ? windowGeometry.size() : QSize(860, 720);
-  if (preferred.height() < minimumHeight())
-    preferred = QSize(860, 720);
+  QSize preferred = windowGeometry.isValid() ? windowGeometry.size() : QSize(700, 440);
+  if (preferred.height() < minimumHeight() || preferred == QSize(860, 720))
+    preferred = QSize(700, 440);
   preferred = preferred.expandedTo(minimumSize()).boundedTo(available.size());
   if (!windowGeometry.isValid())
     windowGeometry = QRect(available.center() - QPoint(preferred.width() / 2, preferred.height() / 2), preferred);
@@ -249,7 +249,8 @@ void MainWindow::setupControls()
   } else {
     ui->btnSaveServerConfig->setIconSize(QSize(22, 22));
   }
-  setStatusBar(m_statusBar);
+  m_statusBar->setCompact(true);
+  ui->footerLayout->insertWidget(1, m_statusBar);
   ui->deviceLayout->addWidget(m_deviceOverview);
   ui->transferLayout->addWidget(m_fileTransferWidget);
   ui->cacheLayout->addWidget(m_cacheStatusWidget);
@@ -1092,7 +1093,6 @@ void MainWindow::updateDeviceOverview()
       DeviceOverviewWidget::Device peer;
       peer.name = screenConfig.name();
       peer.role = tr("Other computer · Client");
-      peer.address = tr("Address unavailable");
       peer.row = row;
       peer.column = column;
       for (const auto &client : m_connectedClients) {
@@ -1133,7 +1133,6 @@ void MainWindow::updateDeviceOverview()
       for (const auto &client : m_connectedClients) {
         DeviceOverviewWidget::Device peer;
         peer.name = client;
-        peer.address = tr("Address unavailable");
         peer.role = tr("Other computer · Client");
         peer.status = connected ? tr("Connected") : tr("Offline");
         peer.connected = connected;

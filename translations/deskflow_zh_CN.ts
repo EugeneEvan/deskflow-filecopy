@@ -828,7 +828,7 @@ Valid names:
     </message>
     <message>
         <source>Address unavailable</source>
-        <translation>地址未知</translation>
+        <translation type="vanished">地址未知</translation>
     </message>
     <message>
         <source>Connected</source>

@@ -61,6 +61,12 @@ StatusBar::StatusBar(QWidget *parent)
   adjustSize();
 }
 
+void StatusBar::setCompact(bool compact)
+{
+  m_lblStatus->setVisible(!compact);
+  setSizeGripEnabled(!compact);
+}
+
 // clang-format off
 void StatusBar::setStatus(ConnectionState connectionState, ProcessState processState, bool isServer)
 {

@@ -657,10 +657,6 @@ La dirección IP asignada ahora no es válida; es posible que deba reiniciar el 
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Address unavailable</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Connected</source>
         <translation type="unfinished"></translation>
     </message>

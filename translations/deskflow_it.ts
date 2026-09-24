@@ -659,10 +659,6 @@ Nomi validi:
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Address unavailable</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Connected</source>
         <translation type="unfinished"></translation>
     </message>
