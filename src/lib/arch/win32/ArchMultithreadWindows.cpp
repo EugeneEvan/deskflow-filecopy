@@ -389,10 +389,14 @@ void ArchMultithreadWindows::setPriorityOfThread(ArchThread thread, int n)
 void ArchMultithreadWindows::testCancelThread()
 {
   // find current thread
-  std::scoped_lock lock{m_threadMutex};
-  ArchThreadImpl *thread = findNoRefOrInsert(GetCurrentThreadId());
+  ArchThreadImpl *thread = nullptr;
+  {
+    std::scoped_lock lock{m_threadMutex};
+    thread = findNoRefOrInsert(GetCurrentThreadId());
+  }
 
-  // test cancel on thread
+  // The running thread owns a reference. Release the lookup lock before the
+  // cancellation helper acquires it again to update the cancellation state.
   testCancelThreadImpl(thread);
 }
 
