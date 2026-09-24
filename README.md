@@ -24,7 +24,9 @@ B 电脑打开目标文件夹 → Ctrl+V
 
 Windows 图片剪贴板支持 DIB/V5 位图读取，修复部分截图、浏览器图片转换的像素偏移，并在读取失败时保留上一份内部状态，允许后续正常事件重新读取。普通剪贴板默认上限提高到 64 MiB；已有配置会保留原值，两端若仍为 3 MiB，应在服务端配置的剪贴板大小设置中同步调高并重新连接。图片按未压缩位图计算大小，压缩后的 PNG/JPEG 文件大小不能用来判断是否超限。此限额与文件复制的 10 GiB 单批限额分别生效。
 
-主控处于跨屏控制状态时，补充转发直接到达 Windows 窗口的垂直/水平滚轮消息，以兼容部分触摸板的滚动路径；具体触摸板驱动的手势行为仍需实机验收。
+主控处于跨屏控制状态时，补充转发直接到达 Windows 窗口的垂直/水平滚轮消息，并保证接收触摸板输入的窗口处于可命中状态；返回主控后隐藏该窗口并取消置顶。具体触摸板驱动的惯性和多指手势不属于通用兼容保证。
+
+0.3.4 修复大图片传输时 TLS 已解密数据滞留、导致后续剪贴板和连接心跳停顿的问题，并修复 Windows 核心退出时线程取消重复加锁的问题。
 
 ### 开始使用
 
@@ -40,7 +42,7 @@ Windows 图片剪贴板支持 DIB/V5 位图读取，修复部分截图、浏览�
 
 在[本仓库 Releases](https://github.com/EugeneEvan/deskflow-filecopy/releases) 选择 Windows x64 的 `*-setup.exe` 安装程序或 `*-portable.zip` 便携包，文件名、校验值和变更说明以该版本实际附件为准。
 
-当前 FileCopy 版本为 `0.3.3`，对应标签 `filecopy-v0.3.3`；下载以 Releases 实际附件为准。应用程序名称、底层协议和配置标识仍沿用 Deskflow；FileCopy 发行版本与“关于”界面的上游版本号分别记录。
+当前 FileCopy 版本为 `0.3.4`，对应标签 `filecopy-v0.3.4`；下载以 Releases 实际附件为准。应用程序名称、底层协议和配置标识仍沿用 Deskflow；FileCopy 发行版本与“关于”界面的上游版本号分别记录。
 
 安装程序使用独立的 Deskflow FileCopy 产品标识，可选择安装路径；请使用独立目录，避免覆盖原版 Deskflow。安装时可勾选“登录后启动”（默认不勾选），仅为当前用户创建启动快捷方式，不安装系统服务。升级保留这一选择；重新运行安装器取消勾选可关闭，卸载时移除本产品的启动快捷方式。
 
@@ -81,6 +83,8 @@ Windows 图片剪贴板支持 DIB/V5 位图读取，修复部分截图、浏览�
 0.3.2 在 Windows 上通过 **38 个 CTest 测试套件**，新增实际 IPv4/IPv6 socket 地址查询、端点消息时序与断线清空验证。离线 Qt 检查覆盖传输前后高度变化、日志显隐/浮动和小屏展开配置后的布局收敛；本次未验证 Linux/macOS 构建。
 
 0.3.3 在 Windows 上通过 **39 个 CTest 测试套件**，包含新增的隔离图片格式、滚轮消息路径，以及大图分块和接收限额回归。本轮排除了会清空真实系统剪贴板的旧 `MSWindowsClipboardTests`，用新增的内存剪贴板图片套件验证相关修复；未验证 Linux/macOS 构建。
+
+0.3.4 修复版在 Windows 上通过 **41 个选定 CTest 测试套件**，新增 TLS 1.2/1.3 缓冲边界与 Windows 线程取消回归。两台物理 Windows 电脑完成 DIB、DIBV5 两种格式的双向图片互传，共四轮；每轮 1920×1080、原始像素约 7.91 MiB，接收端 BGR 像素 SHA-256 均与源端一致，期间核心进程与连接保持稳定。测试使用合成图片，不代表所有截图、浏览器和聊天软件均已验收；本轮仍排除旧 `MSWindowsClipboardTests`，未验证 Linux/macOS 构建。
 
 自动测试覆盖文件/目录传输、内容校验、取消与异常、路径验证、剪贴板格式、协议协商，以及既有功能回归。
 
@@ -170,8 +174,8 @@ Windows CTest 配置会为测试注入 Qt DLL 和平台插件路径，避免缺�
   -CrtDirectory D:\DevTools\MSVC\VC\Redist\MSVC\14.44.35112\x64\Microsoft.VC143.CRT `
   -Dumpbin D:\DevTools\MSVC\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64\dumpbin.exe `
   -Iscc D:\DevTools\InnoSetup\ISCC.exe `
-  -OutputDirectory D:\Releases\deskflow-filecopy-0.3.3 `
-  -Version 0.3.3 `
+  -OutputDirectory D:\Releases\deskflow-filecopy-0.3.4 `
+  -Version 0.3.4 `
   -ProjectUrl https://github.com/EugeneEvan/deskflow-filecopy
 ```
 
