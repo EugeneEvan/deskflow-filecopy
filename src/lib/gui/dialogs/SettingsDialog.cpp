@@ -18,11 +18,16 @@
 #include "gui/TlsUtility.h"
 #include "gui/core/NetworkMonitor.h"
 #include "gui/widgets/SettingsDialogButtonBox.h"
+#include "net/SecureUtils.h"
 
 #include <QComboBox>
 #include <QDir>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QMessageBox>
+#include <QScreen>
+
+#include <exception>
 
 using namespace deskflow::gui;
 
@@ -35,6 +40,7 @@ SettingsDialog::SettingsDialog(QWidget *parent, const ServerConfig &serverConfig
 
   ui->setupUi(this);
   layout()->addWidget(m_buttonBox);
+  ui->tabWidget->setTabVisible(ui->tabWidget->indexOf(ui->tabFileTransfer), deskflow::platform::isWindows());
   ui->tabWidget->setCurrentIndex(0);
 
   // these are enabled by the control next to them
@@ -85,13 +91,19 @@ SettingsDialog::SettingsDialog(QWidget *parent, const ServerConfig &serverConfig
   loadFromConfig();
   logLevelChanged();
 
-  adjustSize();
-  QApplication::processEvents();
-  setFixedHeight(height());
+  setSizeGripEnabled(true);
+  if (const auto currentScreen = screen())
+    resize(size().boundedTo(currentScreen->availableGeometry().size() - QSize(32, 48)));
   setWindowFlags((windowFlags() | Qt::CustomizeWindowHint) & ~Qt::WindowMinMaxButtonsHint);
 
   setButtonBoxEnabledButtons();
   initConnections();
+}
+
+void SettingsDialog::selectFileTransferTab()
+{
+  if (deskflow::platform::isWindows())
+    ui->tabWidget->setCurrentWidget(ui->tabFileTransfer);
 }
 
 void SettingsDialog::changeEvent(QEvent *e)
@@ -119,15 +131,10 @@ void SettingsDialog::initConnections() const
   connect(ui->groupService, &QGroupBox::toggled, this, &SettingsDialog::updateControls);
   connect(ui->btnClearAllSettings, &QPushButton::clicked, this, &SettingsDialog::resetAllSettings);
   connect(ui->btnTlsRegenCert, &QPushButton::clicked, this, &SettingsDialog::regenCertificates);
-  connect(ui->comboTlsKeyLength, &QComboBox::currentIndexChanged, this, &SettingsDialog::updateRequestedKeySize);
   connect(ui->btnTlsCertPath, &QPushButton::clicked, this, &SettingsDialog::browseCertificatePath);
   connect(ui->btnBrowseLog, &QPushButton::clicked, this, &SettingsDialog::browseLogPath);
   connect(ui->groupLogToFile, &QGroupBox::toggled, this, &SettingsDialog::setLogToFile);
   connect(ui->comboLogLevel, &QComboBox::currentIndexChanged, this, &SettingsDialog::logLevelChanged);
-  connect(ui->comboLanguage, &QComboBox::currentTextChanged, this, [](const QString &lang) {
-    const auto shortName = I18N::nativeTo639Name(lang);
-    I18N::setLanguage(shortName);
-  });
 
   // Connect modifiable controls
   connect(ui->rbIconMono, &QRadioButton::toggled, this, &SettingsDialog::setButtonBoxEnabledButtons);
@@ -159,11 +166,26 @@ void SettingsDialog::initConnections() const
 
 void SettingsDialog::regenCertificates()
 {
-  if (TlsUtility::generateCertificate()) {
-    QMessageBox::information(this, tr("TLS Certificate Regenerated"), tr("TLS certificate regenerated successfully."));
-    const auto certificate = Settings::value(Settings::Security::Certificate).toString();
-    updateKeyLengthOnFile(certificate);
+  if (!Settings::isWritable())
+    return;
+
+  // Regeneration is an explicit operation; use the staged values without saving unrelated preferences.
+  const auto certificate = ui->lineTlsCertPath->text();
+  const auto keyLength = ui->comboTlsKeyLength->currentText().toInt();
+  const auto directory = QFileInfo(certificate).absoluteDir();
+  if (certificate.isEmpty() || (!directory.exists() && !directory.mkpath(QStringLiteral(".")))) {
+    QMessageBox::warning(this, tr("TLS Certificate"), tr("The certificate folder could not be created."));
+    return;
   }
+  try {
+    deskflow::generatePemSelfSignedCert(certificate, keyLength);
+  } catch (const std::exception &error) {
+    qWarning() << "failed to regenerate TLS certificate:" << error.what();
+    QMessageBox::warning(this, tr("TLS Certificate"), tr("The TLS certificate could not be regenerated."));
+    return;
+  }
+  QMessageBox::information(this, tr("TLS Certificate Regenerated"), tr("TLS certificate regenerated successfully."));
+  updateKeyLengthOnFile(certificate);
 }
 
 void SettingsDialog::browseCertificatePath()
@@ -196,7 +218,7 @@ void SettingsDialog::browseLogPath()
 
 void SettingsDialog::setLogToFile(bool logToFile)
 {
-  ui->widgetLogFilename->setEnabled(logToFile);
+  ui->widgetLogFilename->setEnabled(Settings::isWritable() && logToFile);
 }
 
 void SettingsDialog::resetAllSettings()
@@ -232,6 +254,10 @@ void SettingsDialog::updateText()
 
 void SettingsDialog::accept()
 {
+  if (!Settings::isWritable())
+    return;
+
+  const auto language = I18N::nativeTo639Name(ui->comboLanguage->currentText());
   Settings::setValue(Settings::Core::FileTransferCachePath, m_cachePath);
   Settings::setValue(Settings::Core::FileTransferCacheLimitGiB, m_cacheLimitGiB);
   Settings::setValue(Settings::Core::Port, ui->sbPort->value());
@@ -250,7 +276,7 @@ void SettingsDialog::accept()
   Settings::setValue(Settings::Gui::CloseToTray, ui->rbCloseToTray->isChecked());
   Settings::setValue(Settings::Gui::SymbolicTrayIcon, ui->rbIconMono->isChecked());
   Settings::setValue(Settings::Security::CheckPeers, ui->cbRequireClientCert->isChecked());
-  Settings::setValue(Settings::Core::Language, I18N::nativeTo639Name(ui->comboLanguage->currentText()));
+  Settings::setValue(Settings::Core::Language, language);
   Settings::setValue(Settings::Log::GuiDebug, ui->cbGuiDebug->isChecked());
   Settings::setValue(Settings::Gui::ShowVersionInTitle, ui->cbShowVersion->isChecked());
   Settings::setValue(Settings::Core::EnableEnterCommand, ui->cbRunEnterCommand->isChecked());
@@ -264,6 +290,7 @@ void SettingsDialog::accept()
   else
     mode = Settings::ProcessMode::Desktop;
   Settings::setValue(Settings::Core::ProcessMode, mode);
+  I18N::setLanguage(language);
 
   QDialog::accept();
 }
@@ -273,6 +300,8 @@ void SettingsDialog::loadFromConfig()
   m_cachePath = Settings::value(Settings::Core::FileTransferCachePath).toString();
   m_cacheLimitGiB = Settings::value(Settings::Core::FileTransferCacheLimitGiB).toInt();
   ui->btnFileCache->setVisible(deskflow::platform::isWindows());
+  const auto language = Settings::value(Settings::Core::Language).toString();
+  ui->comboLanguage->setCurrentText(I18N::toNativeName(language.isEmpty() ? I18N::currentLanguage() : language));
   ui->sbPort->setValue(Settings::value(Settings::Core::Port).toInt());
   ui->comboLogLevel->setCurrentIndex(
       ui->comboLogLevel->findData(Settings::logLevelText(), Qt::UserRole, Qt::MatchFixedString)
@@ -325,7 +354,9 @@ void SettingsDialog::loadFromConfig()
 
   qDebug() << "load from config done";
 
+  updateTlsControls();
   updateControls();
+  setButtonBoxEnabledButtons();
 }
 
 void SettingsDialog::updateTlsControls()
@@ -341,8 +372,6 @@ void SettingsDialog::updateTlsControls()
   ui->cbRequireClientCert->setChecked(Settings::value(Settings::Security::CheckPeers).toBool());
   ui->groupSecurity->setChecked(TlsUtility::isEnabled());
 
-  ui->groupSecurity->setEnabled(Settings::isWritable());
-
   updateTlsControlsEnabled();
 }
 
@@ -351,6 +380,7 @@ void SettingsDialog::updateTlsControlsEnabled()
   const auto writable = Settings::isWritable();
   const auto tlsChecked = ui->groupSecurity->isChecked();
 
+  ui->groupSecurity->setEnabled(writable);
   auto enabled = writable && tlsChecked;
   ui->lblTlsKeyLength->setEnabled(enabled);
   ui->comboTlsKeyLength->setEnabled(enabled);
@@ -438,14 +468,7 @@ void SettingsDialog::updateControls()
 
   ui->widgetLogFilename->setEnabled(writable && logToFile);
 
-  updateTlsControls();
-}
-
-void SettingsDialog::updateRequestedKeySize() const
-{
-  if (ui->comboTlsKeyLength->currentText() == Settings::value(Settings::Security::KeySize).toString())
-    return;
-  Settings::setValue(Settings::Security::KeySize, ui->comboTlsKeyLength->currentText());
+  updateTlsControlsEnabled();
 }
 
 void SettingsDialog::logLevelChanged()
@@ -462,7 +485,8 @@ bool SettingsDialog::isModified() const
       (m_cachePath != Settings::value(Settings::Core::FileTransferCachePath).toString()) ||
       (m_cacheLimitGiB != Settings::value(Settings::Core::FileTransferCacheLimitGiB).toInt()) ||
       (ui->sbPort->value() != Settings::value(Settings::Core::Port).toInt()) ||
-      (ui->comboLogLevel->currentData() != Settings::logLevelText()) ||
+      (LogLevel::fromOption(ui->comboLogLevel->currentData().toString()) !=
+       LogLevel::fromOption(Settings::logLevelText())) ||
       (ui->groupLogToFile->isChecked() != Settings::value(Settings::Log::ToFile).toBool()) ||
       (ui->lineLogFilename->text() != Settings::value(Settings::Log::File).toString()) ||
       (ui->rbAutoHide->isChecked() != Settings::value(Settings::Gui::Autohide).toBool()) ||
@@ -548,8 +572,8 @@ void SettingsDialog::resetToDefault()
   ui->lineCommandExit->setText(Settings::defaultValue(Settings::Core::ScreenExitCommand).toString());
 
   const auto autoHide = Settings::defaultValue(Settings::Gui::Autohide).toBool();
-  ui->rbCloseToTray->setChecked(autoHide);
-  ui->rbExitOnClose->setChecked(!autoHide);
+  ui->rbAutoHide->setChecked(autoHide);
+  ui->rbShowOnStart->setChecked(!autoHide);
 
   const auto closeToTray = Settings::defaultValue(Settings::Gui::CloseToTray).toBool();
   ui->rbCloseToTray->setChecked(closeToTray);
@@ -569,6 +593,11 @@ void SettingsDialog::resetToDefault()
   ui->lblDebugWarning->setVisible(false);
 
   ui->comboInterface->setCurrentIndex(0);
+  ui->comboLanguage->setCurrentText(I18N::toNativeName(QStringLiteral("en")));
+  ui->lineTlsCertPath->setText(Settings::defaultValue(Settings::Security::Certificate).toString());
+  ui->comboTlsKeyLength->setCurrentText(Settings::defaultValue(Settings::Security::KeySize).toString());
+  ui->cbRequireClientCert->setChecked(Settings::defaultValue(Settings::Security::CheckPeers).toBool());
+  ui->groupSecurity->setChecked(Settings::defaultValue(Settings::Security::TlsEnabled).toBool());
 
   qDebug() << "reset to default values";
   updateControls();

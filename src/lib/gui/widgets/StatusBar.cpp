@@ -38,6 +38,10 @@ StatusBar::StatusBar(QWidget *parent)
   insertPermanentWidget(1, m_lblSecurityIcon);
 
   m_lblStatus->setText(tr("%1 is not running").arg(kAppName));
+  m_lblStatus->setTextFormat(Qt::PlainText);
+  m_lblStatus->setMinimumWidth(0);
+  m_lblStatus->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+  m_lblStatus->setToolTip(m_lblStatus->text());
   insertPermanentWidget(2, m_lblStatus, 1);
 
   m_btnUpdate->setVisible(false);
@@ -120,13 +124,14 @@ void StatusBar::setStatus(ConnectionState connectionState, ProcessState processS
       }
     }
   }
+  m_lblStatus->setToolTip(m_lblStatus->text());
 }
 // clang-format on
 void StatusBar::setServerClients(const QStringList &clients)
 {
   if (clients.isEmpty()) {
     m_lblStatus->setText(tr("%1 is waiting for clients").arg(kAppName));
-    m_lblStatus->setToolTip("");
+    m_lblStatus->setToolTip(m_lblStatus->text());
     return;
   }
   const auto clientCount = static_cast<int>(clients.size());
@@ -139,7 +144,7 @@ void StatusBar::setServerClients(const QStringList &clients)
   const auto text = tr("%1 is connected, with %n client(s): %2", "", clientCount).arg(kAppName, clients.join(comma));
   m_lblStatus->setText(text);
 
-  const auto toolTipString = clientCount == 1 ? "" : tr("Clients:\n %1").arg(clients.join(newLine));
+  const auto toolTipString = tr("Clients:\n %1").arg(clients.join(newLine));
   m_lblStatus->setToolTip(toolTipString);
 }
 
@@ -193,6 +198,7 @@ void StatusBar::updateTimerLabel()
     m_connectionInterval--;
   }
   m_lblStatus->setText(text);
+  m_lblStatus->setToolTip(text);
 }
 
 void StatusBar::setSecurityIcon(bool encrypted)

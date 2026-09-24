@@ -413,7 +413,7 @@ Do you want to connect to the server?
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Name can&apos;t have have spaces or special characters&lt;/p&gt;&lt;p&gt;Use Enter to save the name change.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;名称不能包含空格或特殊字符&lt;/p&gt;&lt;p&gt;按 Enter 键保存更改。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation type="vanished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;名称不能包含空格或特殊字符&lt;/p&gt;&lt;p&gt;按 Enter 键保存更改。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <source>Edit Computer Name</source>
@@ -422,13 +422,13 @@ Do you want to connect to the server?
     <message>
         <source>Use this computer&apos;s keyboard and mouse
 (make this computer the server)</source>
-        <translation>使用此计算机的键盘和鼠标
+        <translation type="vanished">使用此计算机的键盘和鼠标
 (将此计算机设为服务器)</translation>
     </message>
     <message>
         <source>Use another computer’s mouse and keyboard
 (make this computer the client)</source>
-        <translation>使用另一台计算机的鼠标和键盘
+        <translation type="vanished">使用另一台计算机的鼠标和键盘
 (将此计算机设为客户端)</translation>
     </message>
     <message>
@@ -457,7 +457,7 @@ Do you want to connect to the server?
     </message>
     <message>
         <source>invalid certificate, generating a new one</source>
-        <translation type="unfinished">证书无效，正在生成新证书</translation>
+        <translation>证书无效，正在生成新证书</translation>
     </message>
     <message>
         <source>Address missing</source>
@@ -501,95 +501,95 @@ Do you want to connect to the server?
     </message>
     <message>
         <source>%1 h %2 min</source>
-        <translation>%1 小时 %2 分钟</translation>
+        <translation type="vanished">%1 小时 %2 分钟</translation>
     </message>
     <message>
         <source>%1 min %2 s</source>
-        <translation>%1 分 %2 秒</translation>
+        <translation type="vanished">%1 分 %2 秒</translation>
     </message>
     <message>
         <source>%1 s</source>
-        <translation>%1 秒</translation>
+        <translation type="vanished">%1 秒</translation>
     </message>
     <message>
         <source>%1 / %2</source>
-        <translation>%1 / %2</translation>
+        <translation type="vanished">%1 / %2</translation>
     </message>
     <message>
         <source>Files: %1 / %2</source>
-        <translation>文件：%1 / %2</translation>
+        <translation type="vanished">文件：%1 / %2</translation>
     </message>
     <message>
         <source>Files received: %1</source>
-        <translation>已接收文件：%1</translation>
+        <translation type="vanished">已接收文件：%1</translation>
     </message>
     <message>
         <source>Files: %1</source>
-        <translation>文件数：%1</translation>
+        <translation type="vanished">文件数：%1</translation>
     </message>
     <message>
         <source>Scanning files before transfer. Speed and remaining time will appear after transfer starts.</source>
-        <translation>正在扫描待传输文件，开始传输后将显示速度和剩余时间。</translation>
+        <translation type="vanished">正在扫描待传输文件，开始传输后将显示速度和剩余时间。</translation>
     </message>
     <message>
         <source>Waiting for confirmation...</source>
-        <translation>正在等待对方确认…</translation>
+        <translation type="vanished">正在等待对方确认…</translation>
     </message>
     <message>
         <source>Checking received files...</source>
-        <translation>正在校验接收文件…</translation>
+        <translation type="vanished">正在校验接收文件…</translation>
     </message>
     <message>
         <source>Sending empty files and folders...</source>
-        <translation>正在发送空文件和文件夹…</translation>
+        <translation type="vanished">正在发送空文件和文件夹…</translation>
     </message>
     <message>
         <source>Receiving empty files and folders...</source>
-        <translation>正在接收空文件和文件夹…</translation>
+        <translation type="vanished">正在接收空文件和文件夹…</translation>
     </message>
     <message>
         <source>%1/s</source>
-        <translation>%1/秒</translation>
+        <translation type="vanished">%1/秒</translation>
     </message>
     <message>
         <source>Speed: --</source>
-        <translation>速度：--</translation>
+        <translation type="vanished">速度：--</translation>
     </message>
     <message>
         <source>%1 remaining</source>
-        <translation>剩余 %1</translation>
+        <translation type="vanished">剩余 %1</translation>
     </message>
     <message>
         <source>Remaining: --</source>
-        <translation>剩余时间：--</translation>
+        <translation type="vanished">剩余时间：--</translation>
     </message>
     <message>
         <source>%1 · %2</source>
-        <translation>%1 · %2</translation>
+        <translation type="vanished">%1 · %2</translation>
     </message>
     <message>
         <source>Wait until the receiving computer is ready before pasting.</source>
-        <translation>请等待接收端提示文件就绪后再粘贴。</translation>
+        <translation type="vanished">请等待接收端提示文件就绪后再粘贴。</translation>
     </message>
     <message>
         <source>Wait until the transfer finishes before pasting.</source>
-        <translation>请等待传输完成后再粘贴。</translation>
+        <translation type="vanished">请等待传输完成后再粘贴。</translation>
     </message>
     <message>
         <source>Press Ctrl+V in the destination folder.</source>
-        <translation>在目标文件夹按 Ctrl+V 粘贴。</translation>
+        <translation type="vanished">在目标文件夹按 Ctrl+V 粘贴。</translation>
     </message>
     <message>
         <source>Paste on the receiving computer.</source>
-        <translation>请在接收电脑上粘贴。</translation>
+        <translation type="vanished">请在接收电脑上粘贴。</translation>
     </message>
     <message>
         <source>Hover here for details.</source>
-        <translation>将鼠标移到此处查看详情。</translation>
+        <translation type="vanished">将鼠标移到此处查看详情。</translation>
     </message>
     <message>
         <source>View &amp;Help</source>
-        <translation type="unfinished">查看帮助(&amp;H)</translation>
+        <translation>查看帮助(&amp;H)</translation>
     </message>
     <message>
         <source>No IP Detected</source>
@@ -601,7 +601,7 @@ Do you want to connect to the server?
     </message>
     <message>
         <source>Using IP: </source>
-        <translation type="unfinished">使用IP地址： </translation>
+        <translation>使用 IP：</translation>
     </message>
     <message>
         <source>&lt;p&gt;If connecting via the hostname fails, try %1&lt;/p&gt;</source>
@@ -618,24 +618,24 @@ Do you want to connect to the server?
     <message>
         <source>
 A bound IP is now invalid, you may need to restart the server.</source>
-        <translation type="unfinished">
-绑定的IP地址现在无效，您可能需要重启服务器。</translation>
+        <translation>
+绑定的 IP 已失效，可能需要重启主控。</translation>
     </message>
     <message>
         <source>Cancelling file transfer...</source>
-        <translation>正在取消文件传输…</translation>
+        <translation type="vanished">正在取消文件传输…</translation>
     </message>
     <message>
         <source>Preparing files...</source>
-        <translation>正在准备文件…</translation>
+        <translation type="vanished">正在准备文件…</translation>
     </message>
     <message>
         <source>Sending files %p%</source>
-        <translation>正在发送 %p%</translation>
+        <translation type="vanished">正在发送 %p%</translation>
     </message>
     <message>
         <source>Receiving files %p%</source>
-        <translation>正在接收 %p%</translation>
+        <translation type="vanished">正在接收 %p%</translation>
     </message>
     <message>
         <source>Sent %1 / %2. Wait until the receiving computer is ready before pasting.</source>
@@ -647,35 +647,35 @@ A bound IP is now invalid, you may need to restart the server.</source>
     </message>
     <message>
         <source>Files ready to paste</source>
-        <translation>文件就绪，可以粘贴</translation>
+        <translation type="vanished">文件就绪，可以粘贴</translation>
     </message>
     <message>
         <source>Files received. Press Ctrl+V in the destination folder to paste.</source>
-        <translation>接收完成，请在目标文件夹按 Ctrl+V 粘贴。</translation>
+        <translation type="vanished">接收完成，请在目标文件夹按 Ctrl+V 粘贴。</translation>
     </message>
     <message>
         <source>Files sent</source>
-        <translation>文件发送完成</translation>
+        <translation type="vanished">文件发送完成</translation>
     </message>
     <message>
         <source>Files sent. Paste on the receiving computer when it reports that files are ready.</source>
-        <translation>文件已发送，请在接收端提示就绪后粘贴。</translation>
+        <translation type="vanished">文件已发送，请在接收端提示就绪后粘贴。</translation>
     </message>
     <message>
         <source>File transfer cancelled</source>
-        <translation>文件传输已取消</translation>
+        <translation type="vanished">文件传输已取消</translation>
     </message>
     <message>
         <source>File transfer failed</source>
-        <translation>文件传输失败</translation>
+        <translation type="vanished">文件传输失败</translation>
     </message>
     <message>
         <source>File transfer interrupted</source>
-        <translation>文件传输已中断</translation>
+        <translation type="vanished">文件传输已中断</translation>
     </message>
     <message>
         <source>Cancel transfer</source>
-        <translation>取消传输</translation>
+        <translation type="vanished">取消传输</translation>
     </message>
     <message>
         <source>&amp;File</source>
@@ -765,52 +765,182 @@ Valid names:
         <translation>%1 连接错误</translation>
     </message>
     <message>
+        <source>Not running</source>
+        <translation>未启动</translation>
+    </message>
+    <message>
+        <source>Starting…</source>
+        <translation>正在启动…</translation>
+    </message>
+    <message>
+        <source>Stopping…</source>
+        <translation>正在停止…</translation>
+    </message>
+    <message>
+        <source>Waiting to reconnect…</source>
+        <translation>等待重新连接…</translation>
+    </message>
+    <message>
+        <source>Waiting for another computer</source>
+        <translation>等待其他电脑连接</translation>
+    </message>
+    <message numerus="yes">
+        <source>Connected · %n computer(s)</source>
+        <translation>
+            <numerusform>已连接 %n 台电脑</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>Connected to server</source>
+        <translation>已连接主控电脑</translation>
+    </message>
+    <message>
+        <source>Connecting…</source>
+        <translation>正在连接…</translation>
+    </message>
+    <message>
+        <source>Disconnected</source>
+        <translation>连接已断开</translation>
+    </message>
+    <message>
+        <source>No network address detected</source>
+        <translation>未检测到网络地址</translation>
+    </message>
+    <message>
+        <source>This computer · Server</source>
+        <translation>本机 · 主控</translation>
+    </message>
+    <message>
+        <source>This computer · Client</source>
+        <translation>本机 · 副机</translation>
+    </message>
+    <message>
+        <source>This computer</source>
+        <translation>本机</translation>
+    </message>
+    <message>
+        <source>Running</source>
+        <translation>运行中</translation>
+    </message>
+    <message>
+        <source>Other computer · Client</source>
+        <translation>其他电脑 · 副机</translation>
+    </message>
+    <message>
+        <source>Address unavailable</source>
+        <translation>地址未知</translation>
+    </message>
+    <message>
+        <source>Connected</source>
+        <translation>已连接</translation>
+    </message>
+    <message>
+        <source>Offline</source>
+        <translation>离线</translation>
+    </message>
+    <message>
+        <source>Server computer</source>
+        <translation>主控电脑</translation>
+    </message>
+    <message>
+        <source>Server address not configured</source>
+        <translation>尚未配置主控地址</translation>
+    </message>
+    <message>
+        <source>Configured address: %1</source>
+        <translation>配置的地址：%1</translation>
+    </message>
+    <message>
+        <source>Other computer · Server</source>
+        <translation>其他电脑 · 主控</translation>
+    </message>
+    <message>
         <source>Suggested IP: </source>
-        <translation type="unfinished">建议 IP： </translation>
+        <translation>建议 IP：</translation>
     </message>
     <message>
         <source>&amp;Configure Client</source>
-        <translation type="unfinished">配置客户端(&amp;C)</translation>
+        <translation>配置副机(&amp;C)</translation>
     </message>
     <message>
         <source>Connect to:</source>
-        <translation type="unfinished">连接到：</translation>
+        <translation>主控地址：</translation>
     </message>
     <message>
         <source>&lt;html&gt;Hostname or IP address of the server computer.&lt;br/&gt;May contain a comma seperated list.&lt;/html&gt;</source>
-        <translation type="unfinished">&lt;html&gt;服务器计算机的主机名或 IP 地址。&lt;br/&gt;可以包含以逗号分隔的列表。&lt;/html&gt;</translation>
+        <translation type="obsolete">&lt;html&gt;服务器计算机的主机名或 IP 地址。&lt;br/&gt;可以包含以逗号分隔的列表。&lt;/html&gt;</translation>
     </message>
     <message>
         <source>read</source>
-        <translation type="unfinished">读取</translation>
+        <translation>读取</translation>
     </message>
     <message>
         <source>read and write</source>
-        <translation type="unfinished">读取和写入</translation>
+        <translation>读写</translation>
     </message>
     <message>
         <source>The Core executable could not be started.
 Please check if you have sufficient permissions to run %1.</source>
-        <translation type="unfinished">无法启动Core可执行文件。
-请检查您是否有足够的权限来运行%1。</translation>
+        <translation>无法启动核心程序。
+请检查是否有运行 %1 的权限。</translation>
     </message>
     <message>
         <source>
 Additionally, check you are able to %1 the server config file: %2</source>
-        <translation type="unfinished">
-另外，请检查您是否能够%1服务器配置文件：%2</translation>
+        <translation>
+同时请检查是否可以%1主控配置文件：%2</translation>
     </message>
     <message>
         <source>Don&apos;t show this again</source>
-        <translation type="unfinished"></translation>
+        <translation>不再显示</translation>
     </message>
     <message>
         <source>Missing Keyboard Layouts</source>
-        <translation type="unfinished"></translation>
+        <translation>缺少键盘布局</translation>
     </message>
     <message>
         <source>&lt;p&gt;Keyboard layout support requires matching layouts on all computers. The following layouts from the other computer are not installed on this computer:&lt;/p&gt;&lt;p&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/p&gt;&lt;p&gt;Please install them to enable support for these layouts.&lt;/p&gt;</source>
-        <translation type="unfinished"></translation>
+        <translation>&lt;p&gt;键盘布局支持要求各台电脑安装匹配的布局。本机尚未安装对方电脑的以下布局：&lt;/p&gt;&lt;p&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/p&gt;&lt;p&gt;请安装这些布局以启用支持。&lt;/p&gt;</translation>
+    </message>
+    <message>
+        <source>Not connected</source>
+        <translation>未连接</translation>
+    </message>
+    <message>
+        <source>Settings</source>
+        <translation>设置</translation>
+    </message>
+    <message>
+        <source>Connection configuration</source>
+        <translation>连接配置</translation>
+    </message>
+    <message>
+        <source>Use letters, numbers, underscores, hyphens or periods. Press Enter to save.</source>
+        <translation>可使用字母、数字、下划线、连字符或句点，按 Enter 保存。</translation>
+    </message>
+    <message>
+        <source>Use this computer&apos;s keyboard and mouse (server)</source>
+        <translation>使用本机的键盘和鼠标（主控）</translation>
+    </message>
+    <message>
+        <source>Use another computer&apos;s keyboard and mouse (client)</source>
+        <translation>使用另一台电脑的键盘和鼠标（副机）</translation>
+    </message>
+    <message>
+        <source>Export configuration</source>
+        <translation>导出配置</translation>
+    </message>
+    <message>
+        <source>Hostname or IP address of the server. Multiple addresses may be separated by commas.</source>
+        <translation>主控电脑的主机名或 IP 地址；多个地址用逗号分隔。</translation>
+    </message>
+    <message>
+        <source>Server hostname or IP address</source>
+        <translation>主控电脑的主机名或 IP 地址</translation>
+    </message>
+    <message>
+        <source>Logs</source>
+        <translation>日志</translation>
     </message>
 </context>
 <context>
@@ -1366,11 +1496,23 @@ Enabling this setting will disable the server config GUI.</source>
     </message>
     <message>
         <source>Always run as system (work at login screen and UAC)</source>
-        <translation type="unfinished">始终以系统身份运行 (在登录屏幕和 UAC 下工作)</translation>
+        <translation>始终以系统身份运行（支持登录界面和 UAC）</translation>
     </message>
     <message>
         <source>Language</source>
         <translation>语言</translation>
+    </message>
+    <message>
+        <source>TLS Certificate</source>
+        <translation>TLS 证书</translation>
+    </message>
+    <message>
+        <source>The certificate folder could not be created.</source>
+        <translation>无法创建证书文件夹。</translation>
+    </message>
+    <message>
+        <source>The TLS certificate could not be regenerated.</source>
+        <translation>无法重新生成 TLS 证书。</translation>
     </message>
     <message>
         <source>TLS Certificate Regenerated</source>
@@ -1390,11 +1532,11 @@ Enabling this setting will disable the server config GUI.</source>
     </message>
     <message>
         <source>%1 Clear Settings</source>
-        <translation type="unfinished">%1 清除设置</translation>
+        <translation>%1 清除设置</translation>
     </message>
     <message>
         <source>&lt;p&gt;Are you sure you want to clear all settings and restart %1?&lt;/p&gt; &lt;p&gt;This action cannot be undone.&lt;/p&gt;</source>
-        <translation type="unfinished">&lt;p&gt;您确定要清除所有设置并重新启动 %1 吗？&lt;/p&gt; &lt;p&gt;此操作无法撤销。&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;确定清除所有设置并重新启动 %1 吗？&lt;/p&gt;&lt;p&gt;此操作无法撤销。&lt;/p&gt;</translation>
     </message>
     <message>
         <source>Required messages</source>
@@ -1430,11 +1572,11 @@ Enabling this setting will disable the server config GUI.</source>
     </message>
     <message>
         <source>Automatic</source>
-        <translation type="unfinished">自动的</translation>
+        <translation>自动</translation>
     </message>
     <message>
         <source>Include version in the window title</source>
-        <translation type="unfinished">在窗口标题中包含版本信息</translation>
+        <translation>在窗口标题中显示版本号</translation>
     </message>
     <message>
         <source>Log to file</source>
@@ -1442,55 +1584,55 @@ Enabling this setting will disable the server config GUI.</source>
     </message>
     <message>
         <source>&amp;Logs</source>
-        <translation type="unfinished">日志(&amp;L)</translation>
+        <translation type="obsolete">日志(&amp;L)</translation>
     </message>
     <message>
         <source>&amp;General</source>
-        <translation>常规(&amp;G)</translation>
+        <translation type="vanished">常规(&amp;G)</translation>
     </message>
     <message>
         <source>&amp;Network</source>
-        <translation>网络(&amp;N)</translation>
+        <translation type="vanished">网络(&amp;N)</translation>
     </message>
     <message>
         <source>&amp;Window</source>
-        <translation type="unfinished">窗户(&amp;W)</translation>
+        <translation>窗口(&amp;W)</translation>
     </message>
     <message>
         <source>When the main window is closed</source>
-        <translation type="unfinished">主窗口关闭时</translation>
+        <translation>关闭主窗口时</translation>
     </message>
     <message>
         <source>Exit</source>
-        <translation type="unfinished">出口</translation>
+        <translation>退出</translation>
     </message>
     <message>
         <source>Send to background</source>
-        <translation type="unfinished">发送到后台</translation>
+        <translation>在后台运行</translation>
     </message>
     <message>
         <source>When the application starts</source>
-        <translation type="unfinished">应用程序启动时</translation>
+        <translation>启动软件时</translation>
     </message>
     <message>
         <source>Show the main window</source>
-        <translation type="unfinished">显示主窗口</translation>
+        <translation>显示主窗口</translation>
     </message>
     <message>
         <source>Run command on enter</source>
-        <translation type="unfinished">按下回车键执行命令</translation>
+        <translation>进入屏幕时运行命令</translation>
     </message>
     <message>
         <source>Run command on exit</source>
-        <translation type="unfinished">退出时运行命令</translation>
+        <translation>离开屏幕时运行命令</translation>
     </message>
     <message>
         <source>Using a log level higher than Info may affect performance.</source>
-        <translation type="unfinished">使用高于 Info 级别的日志级别可能会影响性能。</translation>
+        <translation>使用比 Info 更详细的日志级别可能影响性能。</translation>
     </message>
     <message>
         <source>Remove all settings</source>
-        <translation type="unfinished">移除所有设置</translation>
+        <translation>清除所有设置</translation>
     </message>
     <message>
         <source>File copy requires a signed-in Windows user session. If the core runs as SYSTEM or in session 0, switch to Desktop mode.</source>
@@ -1507,6 +1649,50 @@ Enabling this setting will disable the server config GUI.</source>
     <message>
         <source>Manage file cache...</source>
         <translation>管理文件缓存…</translation>
+    </message>
+    <message>
+        <source>&amp;Connection</source>
+        <translation>连接(&amp;C)</translation>
+    </message>
+    <message>
+        <source>Network</source>
+        <translation>网络</translation>
+    </message>
+    <message>
+        <source>File &amp;transfer</source>
+        <translation>文件传输(&amp;T)</translation>
+    </message>
+    <message>
+        <source>File copy</source>
+        <translation>文件复制</translation>
+    </message>
+    <message>
+        <source>Receiving cache</source>
+        <translation>接收缓存</translation>
+    </message>
+    <message>
+        <source>Received files are saved in a local cache before you paste them. Choose a folder and storage limit, or review and clear completed transfers.</source>
+        <translation>收到的文件会先保存到本地缓存，再由你粘贴到目标位置。可选择缓存文件夹、设置容量上限，并查看或清理已完成的接收文件。</translation>
+    </message>
+    <message>
+        <source>Save settings and reconnect to use a new cache location or storage limit. Existing files stay in their original folder.</source>
+        <translation>保存设置并重新连接后，新缓存位置和容量上限才会生效。已有文件保留在原文件夹。</translation>
+    </message>
+    <message>
+        <source>Appearance</source>
+        <translation>外观</translation>
+    </message>
+    <message>
+        <source>Window behavior</source>
+        <translation>窗口行为</translation>
+    </message>
+    <message>
+        <source>Logs</source>
+        <translation>日志</translation>
+    </message>
+    <message>
+        <source>Screen commands</source>
+        <translation>屏幕切换命令</translation>
     </message>
 </context>
 <context>
@@ -1606,6 +1792,207 @@ Enabling this setting will disable the server config GUI.</source>
     <message>
         <source>Encryption Disabled</source>
         <translation>加密已禁用</translation>
+    </message>
+</context>
+<context>
+    <name>deskflow::gui::CacheStatusWidget</name>
+    <message>
+        <source>Received file cache</source>
+        <translation>接收文件缓存</translation>
+    </message>
+    <message>
+        <source>Manage cache...</source>
+        <translation>管理缓存…</translation>
+    </message>
+    <message>
+        <source>Default cache folder</source>
+        <translation>默认缓存文件夹</translation>
+    </message>
+    <message>
+        <source>Cache folder</source>
+        <translation>缓存文件夹</translation>
+    </message>
+    <message>
+        <source>Inspecting cache...</source>
+        <translation>正在统计缓存…</translation>
+    </message>
+    <message>
+        <source>Cannot read cache usage: %1</source>
+        <translation>无法读取缓存占用：%1</translation>
+    </message>
+    <message>
+        <source>%1 used / %2 GiB limit</source>
+        <translation>已用 %1 / 容量上限 %2 GiB</translation>
+    </message>
+</context>
+<context>
+    <name>deskflow::gui::DeviceOverviewWidget</name>
+    <message>
+        <source>Device connection</source>
+        <translation>设备连接</translation>
+    </message>
+    <message>
+        <source>Devices follow the configured screen positions. Move the pointer across a shared edge.</source>
+        <translation>设备按已配置的屏幕位置排列，将鼠标移过相邻屏幕边缘即可切换。</translation>
+    </message>
+    <message>
+        <source>Screen positions are configured on the server; this view only lists the known devices.</source>
+        <translation>屏幕位置由主控电脑配置；这里仅列出已知设备。</translation>
+    </message>
+</context>
+<context>
+    <name>deskflow::gui::FileTransferWidget</name>
+    <message>
+        <source>%1 h %2 min</source>
+        <translation>%1 小时 %2 分钟</translation>
+    </message>
+    <message>
+        <source>%1 min %2 s</source>
+        <translation>%1 分 %2 秒</translation>
+    </message>
+    <message>
+        <source>%1 s</source>
+        <translation>%1 秒</translation>
+    </message>
+    <message>
+        <source>Current transfer</source>
+        <translation>当前传输</translation>
+    </message>
+    <message>
+        <source>Cancel transfer</source>
+        <translation>取消传输</translation>
+    </message>
+    <message>
+        <source>File transfer interrupted</source>
+        <translation>文件传输已中断</translation>
+    </message>
+    <message>
+        <source>The connection stopped before the transfer finished. Reconnect, then copy the files again.</source>
+        <translation>传输尚未完成，连接已停止。请重新连接后再次复制文件。</translation>
+    </message>
+    <message>
+        <source>No active transfer</source>
+        <translation>暂无传输任务</translation>
+    </message>
+    <message>
+        <source>File copying is disabled</source>
+        <translation>文件复制未启用</translation>
+    </message>
+    <message>
+        <source>Copy files or folders on either computer. Paste after the receiving computer is ready.</source>
+        <translation>在任意一端复制文件或文件夹，等待接收端提示就绪后再粘贴。</translation>
+    </message>
+    <message>
+        <source>Enable file copying in Settings &gt; File transfer on both Windows computers.</source>
+        <translation>请在两台 Windows 电脑的“设置 → 文件传输”中启用文件复制。</translation>
+    </message>
+    <message>
+        <source>Preparing files...</source>
+        <translation>正在准备文件…</translation>
+    </message>
+    <message>
+        <source>Scanning files before transfer. Speed and remaining time will appear after transfer starts.</source>
+        <translation>正在扫描待传输文件，开始传输后将显示速度和剩余时间。</translation>
+    </message>
+    <message>
+        <source>Waiting for confirmation...</source>
+        <translation>正在等待对方确认…</translation>
+    </message>
+    <message>
+        <source>Checking received files...</source>
+        <translation>正在校验接收文件…</translation>
+    </message>
+    <message>
+        <source>Sending empty files and folders...</source>
+        <translation>正在发送空文件和文件夹…</translation>
+    </message>
+    <message>
+        <source>Receiving empty files and folders...</source>
+        <translation>正在接收空文件和文件夹…</translation>
+    </message>
+    <message>
+        <source>Sending files</source>
+        <translation>正在发送文件</translation>
+    </message>
+    <message>
+        <source>Receiving files</source>
+        <translation>正在接收文件</translation>
+    </message>
+    <message>
+        <source>Wait until the receiving computer is ready before pasting.</source>
+        <translation>请等待接收端提示文件就绪后再粘贴。</translation>
+    </message>
+    <message>
+        <source>Wait until the transfer finishes before pasting.</source>
+        <translation>请等待传输完成后再粘贴。</translation>
+    </message>
+    <message>
+        <source>Files ready to paste</source>
+        <translation>文件就绪，可以粘贴</translation>
+    </message>
+    <message>
+        <source>Files received. Press Ctrl+V in the destination folder to paste.</source>
+        <translation>接收完成，请在目标文件夹按 Ctrl+V 粘贴。</translation>
+    </message>
+    <message>
+        <source>Files sent</source>
+        <translation>文件发送完成</translation>
+    </message>
+    <message>
+        <source>Files sent. Paste on the receiving computer when it reports that files are ready.</source>
+        <translation>文件已发送，请在接收端提示就绪后粘贴。</translation>
+    </message>
+    <message>
+        <source>File transfer cancelled</source>
+        <translation>文件传输已取消</translation>
+    </message>
+    <message>
+        <source>Copy the files again when you are ready to retry.</source>
+        <translation>需要重试时，请重新复制文件。</translation>
+    </message>
+    <message>
+        <source>File transfer failed</source>
+        <translation>文件传输失败</translation>
+    </message>
+    <message>
+        <source>The transfer could not finish. Check the connection and try copying again.</source>
+        <translation>传输未能完成，请检查连接后重新复制。</translation>
+    </message>
+    <message>
+        <source>Cancelling file transfer...</source>
+        <translation>正在取消文件传输…</translation>
+    </message>
+    <message>
+        <source>Size: %1 / %2</source>
+        <translation>大小：%1 / %2</translation>
+    </message>
+    <message>
+        <source>Files: %1 / %2</source>
+        <translation>文件：%1 / %2</translation>
+    </message>
+    <message>
+        <source>Files received: %1</source>
+        <translation>已接收文件：%1</translation>
+    </message>
+    <message>
+        <source>Files: %1</source>
+        <translation>文件数：%1</translation>
+    </message>
+    <message>
+        <source>Speed: %1/s</source>
+        <translation>速度：%1/秒</translation>
+    </message>
+    <message>
+        <source>Speed: --</source>
+        <translation>速度：--</translation>
+    </message>
+    <message>
+        <source>%1 remaining</source>
+        <translation>剩余 %1</translation>
+    </message>
+    <message>
+        <source>Remaining: --</source>
+        <translation>剩余时间：--</translation>
     </message>
 </context>
 <context>

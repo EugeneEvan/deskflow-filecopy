@@ -413,7 +413,7 @@ Do you want to connect to the server?
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Name can&apos;t have have spaces or special characters&lt;/p&gt;&lt;p&gt;Use Enter to save the name change.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;이름에는 공백이나 특수문자를 사용할 수 없습니다&lt;/p&gt;&lt;p&gt;Enter 키로 이름 변경을 저장합니다.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation type="vanished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;이름에는 공백이나 특수문자를 사용할 수 없습니다&lt;/p&gt;&lt;p&gt;Enter 키로 이름 변경을 저장합니다.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <source>Edit Computer Name</source>
@@ -422,13 +422,13 @@ Do you want to connect to the server?
     <message>
         <source>Use this computer&apos;s keyboard and mouse
 (make this computer the server)</source>
-        <translation>이 컴퓨터의 키보드와 마우스를 사용
+        <translation type="vanished">이 컴퓨터의 키보드와 마우스를 사용
 (이 컴퓨터를 서버로 설정)</translation>
     </message>
     <message>
         <source>Use another computer’s mouse and keyboard
 (make this computer the client)</source>
-        <translation>다른 컴퓨터의 키보드와 마우스를 사용
+        <translation type="vanished">다른 컴퓨터의 키보드와 마우스를 사용
 (이 컴퓨터를 클라이언트로 설정)</translation>
     </message>
     <message>
@@ -454,10 +454,6 @@ Do you want to connect to the server?
     <message>
         <source>Your current TLS key is smaller than the minimum allowed size, A new key 2048-bit key will be generated.</source>
         <translation>현재 TLS 키 길이가 허용되는 최소 길이보다 짧습니다. 새 2048비트 키를 생성합니다.</translation>
-    </message>
-    <message>
-        <source>Cancelling file transfer...</source>
-        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>invalid certificate, generating a new one</source>
@@ -504,50 +500,6 @@ Do you want to connect to the server?
         <translation>&lt;p&gt;서버 &apos;%1&apos;에 연결하지 못했습니다.&lt;/p&gt;&lt;p&gt;같은 이름의 클라이언트가 이미 서버에 연결되어 있습니다.&lt;/p&gt;&lt;p&gt;고유한 이름을 사용하고, 클라이언트 프로세스가 하나만 실행 중인지 확인하세요.&lt;/p&gt;</translation>
     </message>
     <message>
-        <source>Preparing files...</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Sending files %p%</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Receiving files %p%</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Files ready to paste</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Files received. Press Ctrl+V in the destination folder to paste.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Files sent</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Files sent. Paste on the receiving computer when it reports that files are ready.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>File transfer cancelled</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>File transfer failed</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>File transfer interrupted</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Cancel transfer</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>View &amp;Help</source>
         <translation type="unfinished">도움말 보기(&amp;H)</translation>
     </message>
@@ -580,94 +532,6 @@ Do you want to connect to the server?
 A bound IP is now invalid, you may need to restart the server.</source>
         <translation>
 연결된 IP가 이제 유효하지 않습니다. 서버를 재시작해야 합니다.</translation>
-    </message>
-    <message>
-        <source>%1 h %2 min</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>%1 min %2 s</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>%1 s</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>%1 / %2</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Files: %1 / %2</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Files received: %1</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Files: %1</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Scanning files before transfer. Speed and remaining time will appear after transfer starts.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Waiting for confirmation...</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Checking received files...</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Sending empty files and folders...</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Receiving empty files and folders...</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>%1/s</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Speed: --</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>%1 remaining</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Remaining: --</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>%1 · %2</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Wait until the receiving computer is ready before pasting.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Wait until the transfer finishes before pasting.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Press Ctrl+V in the destination folder.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Paste on the receiving computer.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Hover here for details.</source>
-        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>&amp;File</source>
@@ -757,6 +621,96 @@ Valid names:
         <translation>%1 연결 오류</translation>
     </message>
     <message>
+        <source>Not running</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Starting…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Stopping…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Waiting to reconnect…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Waiting for another computer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message numerus="yes">
+        <source>Connected · %n computer(s)</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>Connected to server</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Connecting…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Disconnected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No network address detected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This computer · Server</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This computer · Client</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This computer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Running</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Other computer · Client</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Address unavailable</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Connected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Offline</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Server computer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Server address not configured</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Configured address: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Other computer · Server</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Suggested IP: </source>
         <translation type="unfinished">추천 IP: </translation>
     </message>
@@ -770,7 +724,7 @@ Valid names:
     </message>
     <message>
         <source>&lt;html&gt;Hostname or IP address of the server computer.&lt;br/&gt;May contain a comma seperated list.&lt;/html&gt;</source>
-        <translation>&lt;html&gt;서버 컴퓨터의 호스트 이름 또는 IP 주소입니다.&lt;br/&gt;목록 요소는 쉼표로 구분됩니다.&lt;/html&gt;</translation>
+        <translation type="vanished">&lt;html&gt;서버 컴퓨터의 호스트 이름 또는 IP 주소입니다.&lt;br/&gt;목록 요소는 쉼표로 구분됩니다.&lt;/html&gt;</translation>
     </message>
     <message>
         <source>read</source>
@@ -802,6 +756,46 @@ Additionally, check you are able to %1 the server config file: %2</source>
     </message>
     <message>
         <source>&lt;p&gt;Keyboard layout support requires matching layouts on all computers. The following layouts from the other computer are not installed on this computer:&lt;/p&gt;&lt;p&gt;&lt;b&gt;%1&lt;/b&gt;&lt;/p&gt;&lt;p&gt;Please install them to enable support for these layouts.&lt;/p&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Not connected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Settings</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Connection configuration</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Use letters, numbers, underscores, hyphens or periods. Press Enter to save.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Use this computer&apos;s keyboard and mouse (server)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Use another computer&apos;s keyboard and mouse (client)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Export configuration</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Hostname or IP address of the server. Multiple addresses may be separated by commas.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Server hostname or IP address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Logs</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -1363,6 +1357,18 @@ Enabling this setting will disable the server config GUI.</source>
         <translation>언어</translation>
     </message>
     <message>
+        <source>TLS Certificate</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The certificate folder could not be created.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The TLS certificate could not be regenerated.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>TLS Certificate Regenerated</source>
         <translation>TLS 인증서 재생성됨</translation>
     </message>
@@ -1432,15 +1438,15 @@ Enabling this setting will disable the server config GUI.</source>
     </message>
     <message>
         <source>&amp;Logs</source>
-        <translation>로그 (&amp;L)</translation>
+        <translation type="vanished">로그 (&amp;L)</translation>
     </message>
     <message>
         <source>&amp;General</source>
-        <translation>일반(&amp;G)</translation>
+        <translation type="vanished">일반(&amp;G)</translation>
     </message>
     <message>
         <source>&amp;Network</source>
-        <translation>네트워크(&amp;N)</translation>
+        <translation type="vanished">네트워크(&amp;N)</translation>
     </message>
     <message>
         <source>&amp;Window</source>
@@ -1496,6 +1502,50 @@ Enabling this setting will disable the server config GUI.</source>
     </message>
     <message>
         <source>Manage file cache...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Connection</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Network</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File &amp;transfer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File copy</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Receiving cache</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Received files are saved in a local cache before you paste them. Choose a folder and storage limit, or review and clear completed transfers.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save settings and reconnect to use a new cache location or storage limit. Existing files stay in their original folder.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Appearance</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Window behavior</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Logs</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Screen commands</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -1596,6 +1646,207 @@ Enabling this setting will disable the server config GUI.</source>
     <message>
         <source>Encryption Disabled</source>
         <translation>암호화 사용 안 함</translation>
+    </message>
+</context>
+<context>
+    <name>deskflow::gui::CacheStatusWidget</name>
+    <message>
+        <source>Received file cache</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Manage cache...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Default cache folder</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cache folder</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Inspecting cache...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot read cache usage: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 used / %2 GiB limit</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>deskflow::gui::DeviceOverviewWidget</name>
+    <message>
+        <source>Device connection</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Devices follow the configured screen positions. Move the pointer across a shared edge.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Screen positions are configured on the server; this view only lists the known devices.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>deskflow::gui::FileTransferWidget</name>
+    <message>
+        <source>%1 h %2 min</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 min %2 s</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 s</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Current transfer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cancel transfer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File transfer interrupted</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The connection stopped before the transfer finished. Reconnect, then copy the files again.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No active transfer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File copying is disabled</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy files or folders on either computer. Paste after the receiving computer is ready.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enable file copying in Settings &gt; File transfer on both Windows computers.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Preparing files...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Scanning files before transfer. Speed and remaining time will appear after transfer starts.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Waiting for confirmation...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Checking received files...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sending empty files and folders...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Receiving empty files and folders...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sending files</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Receiving files</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Wait until the receiving computer is ready before pasting.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Wait until the transfer finishes before pasting.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Files ready to paste</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Files received. Press Ctrl+V in the destination folder to paste.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Files sent</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Files sent. Paste on the receiving computer when it reports that files are ready.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File transfer cancelled</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy the files again when you are ready to retry.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File transfer failed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The transfer could not finish. Check the connection and try copying again.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cancelling file transfer...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Size: %1 / %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Files: %1 / %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Files received: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Files: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Speed: %1/s</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Speed: --</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 remaining</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remaining: --</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>

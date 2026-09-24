@@ -30,14 +30,15 @@
 #include "gui/ipc/DaemonIpcClient.h"
 #include "gui/widgets/LogDock.h"
 #include "net/FingerprintDatabase.h"
+#include "widgets/CacheStatusWidget.h"
+#include "widgets/DeviceOverviewWidget.h"
+#include "widgets/FileTransferWidget.h"
 #include "widgets/StatusBar.h"
 
 #include <QCheckBox>
 #include <QCloseEvent>
 #include <QDesktopServices>
 #include <QFileDialog>
-#include <QJsonDocument>
-#include <QJsonObject>
 #include <QLabel>
 #include <QLocalServer>
 #include <QLocalSocket>
@@ -47,16 +48,18 @@
 #include <QMessageBox>
 #include <QNetworkAccessManager>
 #include <QNetworkInterface>
-#include <QProgressBar>
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
 #include <QScreen>
 #include <QScrollBar>
+#include <QSignalBlocker>
+#include <QTimer>
 #include <QVBoxLayout>
 
-#include <limits>
+#include <algorithm>
 #include <memory>
+#include <utility>
 
 #if defined(Q_OS_MACOS)
 #include <ApplicationServices/ApplicationServices.h>
@@ -72,10 +75,9 @@ MainWindow::MainWindow()
       m_daemonIpcClient{new ipc::DaemonIpcClient(this)},
       m_logDock{new LogDock(this)},
       m_statusBar{new StatusBar(this)},
-      m_fileTransferPanel{new QWidget(this)},
-      m_fileTransferProgress{new QProgressBar(this)},
-      m_fileTransferDetail{new QLabel(this)},
-      m_cancelFileTransfer{new QPushButton(this)},
+      m_deviceOverview{new DeviceOverviewWidget(this)},
+      m_fileTransferWidget{new FileTransferWidget(this)},
+      m_cacheStatusWidget{new CacheStatusWidget(this)},
       m_menuFile{new QMenu(this)},
       m_menuEdit{new QMenu(this)},
       m_menuView{new QMenu(this)},
@@ -190,22 +192,29 @@ MainWindow::~MainWindow()
 void MainWindow::restoreWindow()
 {
   auto windowGeometry = Settings::value(Settings::Gui::WindowGeometry).toRect();
-  const auto totalGeometry = QGuiApplication::primaryScreen()->availableGeometry();
-  if (!windowGeometry.isValid()) {
-    adjustSize();
-    windowGeometry = geometry();
-  } else {
-    setGeometry(windowGeometry);
-  }
-  m_expandedSize = geometry().size();
-
-  if (!totalGeometry.contains(windowGeometry)) {
-    QRect screenGeometry = QGuiApplication::primaryScreen()->geometry();
-    move(screenGeometry.center() - rect().center());
-  }
-
-  if (!Settings::value(Settings::Gui::LogExpanded).toBool())
-    setFixedSize(size());
+  auto *targetScreen = windowGeometry.isValid() ? QGuiApplication::screenAt(windowGeometry.center()) : screen();
+  if (!targetScreen)
+    targetScreen = QGuiApplication::primaryScreen();
+  if (!targetScreen)
+    return;
+  // Older versions saved a shallow, fixed-size window. Give the new content a
+  // useful initial height without making a small or scaled display unusable.
+  const auto available = targetScreen->availableGeometry().adjusted(8, 8, -8, -8);
+  QSize preferred = windowGeometry.isValid() ? windowGeometry.size() : QSize(860, 720);
+  if (preferred.height() < minimumHeight())
+    preferred = QSize(860, 720);
+  preferred = preferred.expandedTo(minimumSize()).boundedTo(available.size());
+  if (!windowGeometry.isValid())
+    windowGeometry = QRect(available.center() - QPoint(preferred.width() / 2, preferred.height() / 2), preferred);
+  else
+    windowGeometry.setSize(preferred);
+  windowGeometry.moveLeft(
+      std::clamp(windowGeometry.left(), available.left(), available.right() - preferred.width() + 1)
+  );
+  windowGeometry.moveTop(
+      std::clamp(windowGeometry.top(), available.top(), available.bottom() - preferred.height() + 1)
+  );
+  setGeometry(windowGeometry);
 }
 
 void MainWindow::setupControls()
@@ -237,34 +246,29 @@ void MainWindow::setupControls()
   if (deskflow::platform::isMac()) {
     ui->rbModeServer->setAttribute(Qt::WA_MacShowFocusRect, false);
     ui->rbModeClient->setAttribute(Qt::WA_MacShowFocusRect, false);
-    ui->btnSaveServerConfig->setFixedWidth(ui->btnSaveServerConfig->height());
   } else {
     ui->btnSaveServerConfig->setIconSize(QSize(22, 22));
   }
   setStatusBar(m_statusBar);
-  m_fileTransferProgress->setObjectName(QStringLiteral("fileTransferProgress"));
-  m_fileTransferProgress->setRange(0, 1000);
-  m_fileTransferProgress->setFixedWidth(220);
-  m_fileTransferProgress->setTextVisible(true);
-  updateFileTransferPalette();
-  m_fileTransferDetail->setObjectName(QStringLiteral("fileTransferDetail"));
-  m_fileTransferDetail->setTextFormat(Qt::PlainText);
-  m_fileTransferDetail->setWordWrap(true);
-  m_fileTransferDetail->setAlignment(Qt::AlignLeft | Qt::AlignTop);
-  m_fileTransferDetail->setFixedWidth(220);
-  m_fileTransferDetail->setFixedHeight(m_fileTransferDetail->fontMetrics().lineSpacing() * 4);
-  auto *transferLayout = new QVBoxLayout(m_fileTransferPanel);
-  transferLayout->setContentsMargins(0, 0, 0, 0);
-  transferLayout->setSpacing(2);
-  transferLayout->addWidget(m_fileTransferProgress);
-  transferLayout->addWidget(m_fileTransferDetail);
-  m_fileTransferPanel->hide();
-  m_cancelFileTransfer->setObjectName(QStringLiteral("cancelFileTransfer"));
-  m_cancelFileTransfer->hide();
-  m_statusBar->addPermanentWidget(m_fileTransferPanel);
-  m_statusBar->addPermanentWidget(m_cancelFileTransfer);
-  m_fileTransferClock.start();
-  m_fileTransferTimer.setInterval(250);
+  ui->deviceLayout->addWidget(m_deviceOverview);
+  ui->transferLayout->addWidget(m_fileTransferWidget);
+  ui->cacheLayout->addWidget(m_cacheStatusWidget);
+  ui->transferContainer->setVisible(deskflow::platform::isWindows());
+  ui->cacheContainer->setVisible(deskflow::platform::isWindows());
+  m_fileTransferWidget->setAvailable(Settings::value(Settings::Core::FileTransferEnabled).toBool());
+  m_cacheStatusWidget->refresh();
+  ui->btnSettings->setIcon(QIcon::fromTheme(QStringLiteral("configure")));
+  ui->brandIcon->setPixmap(QIcon::fromTheme(kRevFqdnName).pixmap(QSize(36, 36)));
+  const bool needsConfiguration =
+      coreMode == CoreMode::None ||
+      (coreMode == CoreMode::Client && Settings::value(Settings::Client::RemoteHost).toString().isEmpty());
+  ui->btnConnectionOptions->setChecked(needsConfiguration);
+  ui->btnConnectionOptions->setArrowType(needsConfiguration ? Qt::DownArrow : Qt::RightArrow);
+  ui->groupBox->setVisible(needsConfiguration);
+  ui->btnLogs->setChecked(Settings::value(Settings::Gui::LogExpanded).toBool());
+  ui->btnLogs->setArrowType(ui->btnLogs->isChecked() ? Qt::DownArrow : Qt::RightArrow);
+  ui->contentScroll->setMinimumSize(0, 0);
+  setMinimumSize(420, 320);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -314,14 +318,26 @@ void MainWindow::connectSlots()
   connect(&m_coreProcess, &CoreProcess::retryIn, this, &MainWindow::updateTimeoutDelay);
   connect(&m_coreProcess, &CoreProcess::peerFingerprint, this, &MainWindow::handlePeerFingerprint);
   connect(&m_coreProcess, &CoreProcess::missingKeyboardLayouts, this, &MainWindow::handleMissingKeyboardLayouts);
-  connect(&m_coreProcess, &CoreProcess::fileTransferStatusChanged, this, &MainWindow::handleFileTransferStatus);
-  connect(&m_fileTransferTimer, &QTimer::timeout, this, &MainWindow::updateFileTransferDisplay);
-  connect(m_cancelFileTransfer, &QPushButton::clicked, this, [this] {
-    m_coreProcess.cancelFileTransfer();
-    m_fileTransferCancelling = true;
-    m_cancelFileTransfer->setEnabled(false);
-    updateFileTransferDisplay();
+  connect(
+      &m_coreProcess, &CoreProcess::fileTransferStatusChanged, m_fileTransferWidget, &FileTransferWidget::setStatus
+  );
+  connect(m_fileTransferWidget, &FileTransferWidget::cancelRequested, &m_coreProcess, &CoreProcess::cancelFileTransfer);
+  connect(
+      m_fileTransferWidget, &FileTransferWidget::notification, this,
+      [this](const QString &title, const QString &message, bool failed) {
+        m_trayIcon->showMessage(title, message, failed ? QSystemTrayIcon::Warning : QSystemTrayIcon::Information);
+      }
+  );
+  connect(m_fileTransferWidget, &FileTransferWidget::cacheChanged, m_cacheStatusWidget, &CacheStatusWidget::refresh);
+  connect(m_cacheStatusWidget, &CacheStatusWidget::manageRequested, this, [this] { openSettingsPage(true); });
+  connect(ui->btnSettings, &QPushButton::clicked, this, &MainWindow::openSettings);
+  connect(ui->btnConnectionOptions, &QToolButton::toggled, this, [this](bool checked) {
+    ui->groupBox->setVisible(checked);
+    ui->btnConnectionOptions->setArrowType(checked ? Qt::DownArrow : Qt::RightArrow);
+    if (checked)
+      updateNetworkInfo();
   });
+  connect(ui->btnLogs, &QToolButton::clicked, m_logDock->toggleViewAction(), &QAction::trigger);
 
   if (Settings::value(Settings::Gui::AutoStartCore).toBool()) {
     connect(ui->btnToggleCore, &QPushButton::clicked, m_actionStopCore, &QAction::trigger, Qt::UniqueConnection);
@@ -366,30 +382,21 @@ void MainWindow::toggleLogVisible(bool visible)
     return;
   }
 
-  setFixedSize(16777215, 16777215);
+  const QSignalBlocker blocker(ui->btnLogs);
+  ui->btnLogs->setChecked(visible);
+  ui->btnLogs->setArrowType(visible ? Qt::DownArrow : Qt::RightArrow);
   Settings::setValue(Settings::Gui::LogExpanded, visible);
-  if (visible) {
-    if (m_logDock->isFloating()) {
-      adjustSize();
-      setFixedSize(size());
-    } else {
-      QTimer::singleShot(15, this, [&] { resize(m_expandedSize); });
-    }
-  } else {
-    if (!m_logDock->isFloating()) {
-      m_expandedSize = geometry().size();
-    }
-    m_logDock->hide();
-    if (!m_logDock->isFloating()) {
-      adjustSize();
-    }
-    setFixedSize(size());
-  }
+  if (visible && !m_logDock->isFloating())
+    resizeDocks({m_logDock}, {std::max(130, height() / 3)}, Qt::Vertical);
   Settings::setValue(Settings::Gui::WindowGeometry, geometry());
 }
 
 void MainWindow::settingsChanged(const QString &key)
 {
+  if (key.isEmpty() || key == Settings::Core::FileTransferEnabled)
+    m_fileTransferWidget->setAvailable(Settings::value(Settings::Core::FileTransferEnabled).toBool());
+  if (key.isEmpty() || key == Settings::Core::FileTransferCachePath || key == Settings::Core::FileTransferCacheLimitGiB)
+    m_cacheStatusWidget->refresh();
   if (key == Settings::Log::Level) {
     m_coreProcess.applyLogLevel();
     return;
@@ -416,6 +423,7 @@ void MainWindow::settingsChanged(const QString &key)
 void MainWindow::serverConfigSaving()
 {
   m_serverConfig.commit();
+  updateDeviceOverview();
 }
 
 void MainWindow::trayIconActivated(QSystemTrayIcon::ActivationReason reason)
@@ -512,10 +520,20 @@ void MainWindow::openGetNewVersionUrl() const
 
 void MainWindow::openSettings()
 {
+  openSettingsPage(false);
+}
+
+void MainWindow::openSettingsPage(bool fileTransfer)
+{
   auto dialog = SettingsDialog(this, m_serverConfig);
+  if (fileTransfer)
+    dialog.selectFileTransferTab();
 
   connect(&dialog, &SettingsDialog::requestRemoveAllSettings, this, &MainWindow::clearSettings, Qt::UniqueConnection);
-  if (dialog.exec() == QDialog::Accepted) {
+  const auto result = dialog.exec();
+  // Cache cleanup is immediate even if the user later cancels preferences.
+  m_cacheStatusWidget->refresh();
+  if (result == QDialog::Accepted) {
     Settings::save();
     disconnect(&dialog, &SettingsDialog::requestRemoveAllSettings, nullptr, nullptr);
 
@@ -557,6 +575,8 @@ void MainWindow::coreModeToggled(bool checked)
 
   if (m_coreProcess.isStarted() && m_coreProcess.mode() != mode)
     m_coreProcess.stop();
+  if (m_coreProcess.mode() != mode)
+    m_connectedClients.clear();
   m_coreProcess.setMode(mode);
 
   Settings::setValue(Settings::Core::CoreMode, mode);
@@ -591,6 +611,8 @@ void MainWindow::updateModeControls()
 
   if (isServer || isClient)
     updateModeControlLabels();
+  updateDeviceOverview();
+  updateConnectionSummary();
 }
 
 void MainWindow::updateModeControlLabels()
@@ -980,177 +1002,155 @@ void MainWindow::updateStatus()
     ui->btnEditName->setVisible(process == Stopped);
   }
   m_statusBar->setStatus(connection, process, isServer);
+  if (isServer && process == ProcessState::Started && connection == ConnectionState::Connected)
+    m_statusBar->setServerClients(m_connectedClients);
+  updateConnectionSummary();
+  updateDeviceOverview();
 }
 
-void MainWindow::updateFileTransferPalette()
+void MainWindow::updateConnectionSummary()
 {
-  // Keep the native Fusion progress rendering; only change this widget's accent.
-  auto progressPalette = palette();
-  progressPalette.setColor(QPalette::Highlight, QColor(QStringLiteral("#b2bac4")));
-  progressPalette.setColor(QPalette::HighlightedText, QColor(QStringLiteral("#20252b")));
-  m_fileTransferProgress->setPalette(progressPalette);
+  QString summary;
+  switch (m_coreProcess.processState()) {
+    using enum ProcessState;
+  case Stopped:
+    summary = tr("Not running");
+    break;
+  case Starting:
+    summary = tr("Starting…");
+    break;
+  case Stopping:
+    summary = tr("Stopping…");
+    break;
+  case RetryPending:
+    summary = tr("Waiting to reconnect…");
+    break;
+  case Started:
+    switch (m_coreProcess.connectionState()) {
+      using enum ConnectionState;
+    case Connected:
+      summary = m_coreProcess.mode() == CoreMode::Server
+                    ? (m_connectedClients.isEmpty() ? tr("Waiting for another computer")
+                                                    : tr("Connected · %n computer(s)", "", m_connectedClients.size()))
+                    : tr("Connected to server");
+      break;
+    case Listening:
+      summary = tr("Waiting for another computer");
+      break;
+    case Connecting:
+      summary = tr("Connecting…");
+      break;
+    case Disconnected:
+      summary = tr("Disconnected");
+      break;
+    }
+    break;
+  }
+  ui->connectionStatus->setText(summary);
+  ui->connectionStatus->setAccessibleName(summary);
 }
 
-void MainWindow::handleFileTransferStatus(const QString &statusJson)
+void MainWindow::updateDeviceOverview()
 {
-  QJsonParseError parseError;
-  const auto document = QJsonDocument::fromJson(statusJson.toUtf8(), &parseError);
-  if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
-    qWarning("invalid file transfer status from core ipc");
-    return;
+  const auto mode = m_coreProcess.mode();
+  const bool isServer = mode == CoreMode::Server;
+  const bool isClient = mode == CoreMode::Client;
+  const bool running = m_coreProcess.processState() == ProcessState::Started;
+  const bool connected = running && m_coreProcess.connectionState() == ConnectionState::Connected;
+  const auto localName = Settings::value(Settings::Core::ComputerName).toString();
+  const auto boundAddress = Settings::value(Settings::Core::Interface).toString();
+  const auto localAddresses =
+      boundAddress.isEmpty() ? NetworkMonitor::validAddresses().join(QStringLiteral(", ")) : boundAddress;
+  DeviceOverviewWidget::Device local;
+  local.name = localName;
+  local.address = localAddresses.isEmpty() ? tr("No network address detected") : localAddresses;
+  local.role =
+      isServer ? tr("This computer · Server") : (isClient ? tr("This computer · Client") : tr("This computer"));
+  local.status = running ? tr("Running") : tr("Not running");
+  local.local = true;
+  local.connected = connected;
+  QList<DeviceOverviewWidget::Device> devices;
+  bool layoutKnown = isServer && !m_serverConfig.useExternalConfig();
+
+  if (layoutKnown) {
+    const int columns = std::max(1, Settings::value(Settings::Server::GridWidth).toInt());
+    QStringList matchedClients;
+    bool localAdded = false;
+    int index = 0;
+    for (const auto &screenConfig : std::as_const(m_serverConfig).screens()) {
+      const int row = index / columns;
+      const int column = index++ % columns;
+      if (screenConfig.isNull())
+        continue;
+      if (screenConfig.isServer() || screenConfig.name() == localName) {
+        local.row = row;
+        local.column = column;
+        devices.append(local);
+        localAdded = true;
+        continue;
+      }
+      DeviceOverviewWidget::Device peer;
+      peer.name = screenConfig.name();
+      peer.role = tr("Other computer · Client");
+      peer.address = tr("Address unavailable");
+      peer.row = row;
+      peer.column = column;
+      for (const auto &client : m_connectedClients) {
+        if (screenConfig.name() == client || screenConfig.aliases().contains(client)) {
+          peer.connected = connected;
+          matchedClients.append(client);
+        }
+      }
+      peer.status = peer.connected ? tr("Connected") : tr("Offline");
+      devices.append(peer);
+    }
+    // A configuration file or a just-connected unknown client can lack a
+    // reliable grid position. Never display an invented physical position.
+    if (!localAdded ||
+        std::any_of(m_connectedClients.cbegin(), m_connectedClients.cend(), [&matchedClients](const QString &client) {
+          return !matchedClients.contains(client);
+        }))
+      layoutKnown = false;
   }
 
-  if (!m_fileTransferModel.update(document.object(), m_fileTransferClock.elapsed())) {
-    qWarning("invalid file transfer state or counters from core ipc");
-    return;
-  }
-
-  const auto &status = m_fileTransferModel.status();
-  const auto &id = status.id;
-  const auto &state = status.state;
-  const bool changed = id != m_fileTransferId || state != m_fileTransferState;
-  m_fileTransferId = id;
-  m_fileTransferState = state;
-  if (changed)
-    m_fileTransferCancelling = false;
-  if (status.active()) {
-    if (!m_fileTransferTimer.isActive())
-      m_fileTransferTimer.start();
-  } else {
-    m_fileTransferTimer.stop();
-  }
-  // Do not redraw for every ACK; the timer keeps rates current even if the
-  // connection stops producing progress events. Terminal states appear at once.
-  if (changed || !status.active())
-    updateFileTransferDisplay();
-
-  if (changed && (state == "ready" || state == "failed")) {
-    m_trayIcon->showMessage(
-        m_fileTransferProgress->format(), m_fileTransferProgress->toolTip(),
-        state == "failed" ? QSystemTrayIcon::Warning : QSystemTrayIcon::Information
-    );
-  }
-}
-
-void MainWindow::updateFileTransferDisplay()
-{
-  const auto &status = m_fileTransferModel.status();
-  if (status.state.isEmpty())
-    return;
-  const auto &state = status.state;
-  const auto metrics = m_fileTransferModel.metrics(m_fileTransferClock.elapsed());
-  m_cancelFileTransfer->setVisible(status.active());
-  m_cancelFileTransfer->setEnabled(status.active() && !m_fileTransferCancelling);
-  m_fileTransferProgress->setRange(0, 1000);
-  m_fileTransferProgress->setValue(metrics.progress);
-
-  const auto formatBytes = [](quint64 bytes) {
-    return QLocale().formattedDataSize(static_cast<qint64>(qMin<quint64>(bytes, std::numeric_limits<qint64>::max())));
-  };
-  const auto formatDuration = [this](quint64 seconds) {
-    if (seconds >= 3600)
-      return tr("%1 h %2 min").arg(seconds / 3600).arg((seconds % 3600) / 60);
-    if (seconds >= 60)
-      return tr("%1 min %2 s").arg(seconds / 60).arg(seconds % 60);
-    return tr("%1 s").arg(seconds);
-  };
-  QStringList summary;
-  if (state != "preparing") {
-    summary << tr("%1 / %2").arg(formatBytes(status.bytesDone), formatBytes(status.bytesTotal));
-    if (status.hasFileCounts) {
-      const auto done = QLocale().toString(status.filesDone);
-      if (status.filesTotal > 0)
-        summary << tr("Files: %1 / %2").arg(done, QLocale().toString(status.filesTotal));
-      else if (state == "receiving" || state == "ready")
-        summary << tr("Files received: %1").arg(done);
-      else
-        summary << tr("Files: %1").arg(done);
+  if (!layoutKnown) {
+    devices.clear();
+    local.row = 0;
+    local.column = 0;
+    devices.append(local);
+    if (isClient) {
+      DeviceOverviewWidget::Device peer;
+      peer.name = tr("Server computer");
+      const auto configuredAddress = Settings::value(Settings::Client::RemoteHost).toString();
+      peer.address = configuredAddress.isEmpty() ? tr("Server address not configured")
+                                                 : tr("Configured address: %1").arg(configuredAddress);
+      peer.role = tr("Other computer · Server");
+      peer.status = connected ? tr("Connected") : tr("Not connected");
+      peer.connected = connected;
+      peer.column = 1;
+      devices.append(peer);
+    } else if (isServer) {
+      for (const auto &client : m_connectedClients) {
+        DeviceOverviewWidget::Device peer;
+        peer.name = client;
+        peer.address = tr("Address unavailable");
+        peer.role = tr("Other computer · Client");
+        peer.status = connected ? tr("Connected") : tr("Offline");
+        peer.connected = connected;
+        peer.column = devices.size();
+        devices.append(peer);
+      }
     }
   }
-
-  QString message;
-  QString detail;
-  if (state == "preparing") {
-    message = tr("Preparing files...");
-    detail = tr("Scanning files before transfer. Speed and remaining time will appear after transfer starts.");
-    summary << message;
-  } else if (state == "receiving" || state == "sending") {
-    if (status.awaitingCompletion()) {
-      message = state == "sending" ? tr("Waiting for confirmation...") : tr("Checking received files...");
-      summary << message;
-    } else if (status.bytesTotal == 0) {
-      message =
-          state == "sending" ? tr("Sending empty files and folders...") : tr("Receiving empty files and folders...");
-    } else {
-      message = state == "sending" ? tr("Sending files %p%") : tr("Receiving files %p%");
-      const auto speed =
-          metrics.bytesPerSecond
-              ? tr("%1/s").arg(formatBytes(
-                    static_cast<quint64>(
-                        qMin(*metrics.bytesPerSecond, static_cast<double>(std::numeric_limits<qint64>::max()))
-                    )
-                ))
-              : tr("Speed: --");
-      const auto remaining = metrics.secondsRemaining
-                                 ? tr("%1 remaining").arg(formatDuration(*metrics.secondsRemaining))
-                                 : tr("Remaining: --");
-      summary << tr("%1 · %2").arg(speed, remaining);
-    }
-    detail = state == "sending" ? tr("Wait until the receiving computer is ready before pasting.")
-                                : tr("Wait until the transfer finishes before pasting.");
-  } else if (state == "ready") {
-    message = tr("Files ready to paste");
-    detail = tr("Files received. Press Ctrl+V in the destination folder to paste.");
-    summary << tr("Press Ctrl+V in the destination folder.");
-  } else if (state == "completed") {
-    message = tr("Files sent");
-    detail = tr("Files sent. Paste on the receiving computer when it reports that files are ready.");
-    summary << tr("Paste on the receiving computer.");
-  } else if (state == "cancelled") {
-    message = tr("File transfer cancelled");
-    detail = status.error;
-    summary = {message};
-  } else {
-    message = tr("File transfer failed");
-    detail = status.error;
-    summary = {message, tr("Hover here for details.")};
-  }
-  if (m_fileTransferCancelling)
-    message = tr("Cancelling file transfer...");
-
-  m_fileTransferProgress->setFormat(message);
-  m_fileTransferProgress->setAccessibleName(message);
-  const auto summaryText = summary.join('\n');
-  m_fileTransferDetail->setText(summaryText);
-  m_fileTransferDetail->setAccessibleName(summaryText);
-  const auto toolTip = detail.isEmpty() ? summaryText : summaryText + '\n' + detail;
-  m_fileTransferProgress->setToolTip(toolTip);
-  m_fileTransferDetail->setToolTip(toolTip);
-  if (m_fileTransferPanel->isHidden()) {
-    m_fileTransferPanel->show();
-    m_statusBar->layout()->activate();
-    layout()->activate();
-    // The compact window uses a fixed size. Make room vertically for details
-    // without allowing changing byte counts or ETA text to widen the window.
-    if (!Settings::value(Settings::Gui::LogExpanded).toBool() && height() < sizeHint().height())
-      setFixedHeight(sizeHint().height());
-  }
+  m_deviceOverview->setDevices(devices, layoutKnown);
 }
 
 void MainWindow::coreProcessStateChanged(ProcessState state)
 {
   using enum ProcessState;
-  if (state == Stopped &&
-      (m_fileTransferState == "preparing" || m_fileTransferState == "receiving" || m_fileTransferState == "sending")) {
-    m_fileTransferState = QStringLiteral("failed");
-    m_fileTransferTimer.stop();
-    m_fileTransferModel.reset();
-    m_fileTransferCancelling = false;
-    m_fileTransferProgress->setFormat(tr("File transfer interrupted"));
-    m_fileTransferDetail->setText(tr("File transfer interrupted"));
-    m_fileTransferProgress->setToolTip(tr("File transfer interrupted"));
-    m_fileTransferDetail->setToolTip(tr("File transfer interrupted"));
-    m_cancelFileTransfer->hide();
+  if (state == Stopped || state == RetryPending) {
+    m_fileTransferWidget->setCoreStopped();
+    m_connectedClients.clear();
   }
   updateStatus();
   if (state == Started) {
@@ -1199,7 +1199,10 @@ void MainWindow::coreConnectionStateChanged(ConnectionState state)
   // to anything except connected. the only way the padlock shows is
   // when the correct TLS version string is detected.
   if (state != ConnectionState::Connected) {
+    m_connectedClients.clear();
     secureSocket(false);
+    updateDeviceOverview();
+    updateConnectionSummary();
   } else if (isVisible()) {
     showFirstConnectedMessage();
   }
@@ -1212,6 +1215,8 @@ void MainWindow::updateFingerprintButton()
 
 void MainWindow::hide()
 {
+  if (isVisible() && !isMinimized())
+    Settings::setValue(Settings::Gui::WindowGeometry, normalGeometry());
 #ifdef Q_OS_MACOS
   macOSNativeHide();
 #else
@@ -1230,13 +1235,13 @@ void MainWindow::changeEvent(QEvent *e)
         deskflow::platform::isWindows() ? QIcon(QStringLiteral(":/deskflow.ico")) : QIcon::fromTheme(kRevFqdnName)
     );
     setTrayIcon();
-    updateFileTransferPalette();
+    ui->brandIcon->setPixmap(QIcon::fromTheme(kRevFqdnName).pixmap(QSize(36, 36)));
   } else if (e->type() == QEvent::LanguageChange) {
     ui->retranslateUi(this);
     updateModeControlLabels();
     updateNetworkInfo();
     updateStatus();
-    serverClientsChanged({});
+    serverClientsChanged(m_connectedClients);
     updateText();
   }
 }
@@ -1257,8 +1262,6 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 
 void MainWindow::updateText()
 {
-  m_cancelFileTransfer->setText(tr("Cancel transfer"));
-  updateFileTransferDisplay();
   m_menuFile->setTitle(tr("&File"));
   m_menuEdit->setTitle(tr("&Edit"));
   m_menuView->setTitle(tr("&View"));
@@ -1299,6 +1302,7 @@ void MainWindow::showConfigureServer(const QString &message)
   if ((dialog.exec() == QDialog::Accepted) && m_coreProcess.isStarted()) {
     m_coreProcess.restart();
   }
+  updateDeviceOverview();
 }
 
 void MainWindow::showConfigureClient()
@@ -1321,6 +1325,7 @@ void MainWindow::updateScreenName()
   ui->lblComputerName->setText(screenName);
   ui->lineEditName->setText(screenName);
   m_serverConfig.updateServerName();
+  updateDeviceOverview();
 }
 
 void MainWindow::showAndActivate()
@@ -1415,7 +1420,10 @@ void MainWindow::serverClientsChanged(const QStringList &clients)
 {
   if (m_coreProcess.mode() != CoreMode::Server || !m_coreProcess.isStarted())
     return;
+  m_connectedClients = clients;
   m_statusBar->setServerClients(clients);
+  updateDeviceOverview();
+  updateConnectionSummary();
 }
 
 void MainWindow::daemonIpcClientConnectionFailed()
@@ -1443,10 +1451,12 @@ void MainWindow::remoteHostChanged(const QString &newRemoteHost)
   } else {
     Settings::setValue(Settings::Client::RemoteHost, newRemoteHost);
   }
+  updateDeviceOverview();
 }
 
 void MainWindow::updateIpLabel(const QStringList &addresses)
 {
+  updateDeviceOverview();
   const auto mode = m_coreProcess.mode();
   if (mode == CoreMode::None) {
     return;

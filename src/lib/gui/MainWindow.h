@@ -9,15 +9,12 @@
 
 #pragma once
 
-#include <QElapsedTimer>
 #include <QMainWindow>
 #include <QProcess>
 #include <QRegularExpression>
 #include <QSystemTrayIcon>
-#include <QTimer>
 #include <QUrl>
 
-#include "FileTransferProgressModel.h"
 #include "VersionChecker.h"
 #include "config/ServerConfig.h"
 #include "gui/core/CoreProcess.h"
@@ -32,8 +29,6 @@ class QAction;
 class QMenu;
 class QLocalServer;
 class QLabel;
-class QProgressBar;
-class QPushButton;
 
 class DeskflowApplication;
 class LogDock;
@@ -46,6 +41,12 @@ class MainWindow;
 namespace deskflow::gui::ipc {
 class DaemonIpcClient;
 }
+
+namespace deskflow::gui {
+class DeviceOverviewWidget;
+class FileTransferWidget;
+class CacheStatusWidget;
+} // namespace deskflow::gui
 
 class MainWindow : public QMainWindow
 {
@@ -104,6 +105,7 @@ private:
   void openAboutDialog();
   void openGetNewVersionUrl() const;
   void openSettings();
+  void openSettingsPage(bool fileTransfer);
   void startCore();
   void stopCore();
   bool saveServerConfig();
@@ -126,9 +128,8 @@ private:
   void handleConnectionRefused(deskflow::core::ConnectionRefusal reason);
   void handlePeerFingerprint(const QString &fingerprint);
   void handleMissingKeyboardLayouts(const QString &layouts);
-  void handleFileTransferStatus(const QString &statusJson);
-  void updateFileTransferDisplay();
-  void updateFileTransferPalette();
+  void updateDeviceOverview();
+  void updateConnectionSummary();
   void closeEvent(QCloseEvent *event) override;
   bool maybeHideToTray();
   void secureSocket(bool secureSocket);
@@ -184,7 +185,6 @@ private:
   QSet<QString> m_ignoredClients;
   bool m_newClientPromptShowing = false;
   bool m_serverConfigDialogVisible = false;
-  QSize m_expandedSize = QSize();
   QStringList m_checkedClients;
   QStringList m_checkedServers;
   QSystemTrayIcon *m_trayIcon = nullptr;
@@ -193,16 +193,10 @@ private:
 
   LogDock *m_logDock;
   StatusBar *m_statusBar = nullptr;
-  QWidget *m_fileTransferPanel = nullptr;
-  QProgressBar *m_fileTransferProgress = nullptr;
-  QLabel *m_fileTransferDetail = nullptr;
-  QPushButton *m_cancelFileTransfer = nullptr;
-  QString m_fileTransferId;
-  QString m_fileTransferState;
-  deskflow::gui::FileTransferProgressModel m_fileTransferModel;
-  QElapsedTimer m_fileTransferClock;
-  QTimer m_fileTransferTimer;
-  bool m_fileTransferCancelling = false;
+  deskflow::gui::DeviceOverviewWidget *m_deviceOverview = nullptr;
+  deskflow::gui::FileTransferWidget *m_fileTransferWidget = nullptr;
+  deskflow::gui::CacheStatusWidget *m_cacheStatusWidget = nullptr;
+  QStringList m_connectedClients;
 
   // Window Menu
   QMenu *m_menuFile = nullptr;
