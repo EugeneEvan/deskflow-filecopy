@@ -595,7 +595,11 @@ void MSWindowsDesks::deskLeave(Desk *desk, HKL keyLayout)
       w = m_w;
       h = m_h;
     }
-    SetWindowPos(desk->m_window, HWND_TOP, x, y, w, h, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+    // Precision touchpad scrolling targets the window under the cursor. Keep
+    // the 1x1 low-level hook window above applications while sharing input;
+    // deskEnter hides it and removes the topmost state with HWND_BOTTOM.
+    const auto insertAfter = desk->m_lowLevel ? HWND_TOPMOST : HWND_TOP;
+    SetWindowPos(desk->m_window, insertAfter, x, y, w, h, SWP_NOACTIVATE | SWP_SHOWWINDOW);
 
     // switch to requested keyboard layout
     ActivateKeyboardLayout(keyLayout, 0);
@@ -617,9 +621,11 @@ void MSWindowsDesks::deskLeave(Desk *desk, HKL keyLayout)
     // note that we must enable the window to activate it and we
     // need to disable the window on deskEnter.
     else {
+      // Hit testing skips disabled windows. Keep receiving touchpad gestures
+      // even when the user asks us to leave the existing foreground unchanged.
+      EnableWindow(desk->m_window, TRUE);
       desk->m_foregroundWindow = getForegroundWindow();
       if (desk->m_foregroundWindow != nullptr) {
-        EnableWindow(desk->m_window, TRUE);
         SetActiveWindow(desk->m_window);
         DWORD thisThread = GetWindowThreadProcessId(desk->m_window, nullptr);
         DWORD thatThread = GetWindowThreadProcessId(desk->m_foregroundWindow, nullptr);
