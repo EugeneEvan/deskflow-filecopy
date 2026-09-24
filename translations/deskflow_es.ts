@@ -633,10 +633,6 @@ La dirección IP asignada ahora no es válida; es posible que deba reiniciar el 
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>No network address detected</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>This computer · Server</source>
         <translation type="unfinished"></translation>
     </message>
@@ -666,14 +662,6 @@ La dirección IP asignada ahora no es válida; es posible que deba reiniciar el 
     </message>
     <message>
         <source>Server computer</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Server address not configured</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Configured address: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -794,6 +782,10 @@ Además, verifique que puede %1 el archivo de configuración del servidor: %2</t
     <message>
         <source>Logs</source>
         <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Connection</source>
+        <translation>Conexión</translation>
     </message>
 </context>
 <context>

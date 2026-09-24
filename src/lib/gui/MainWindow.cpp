@@ -51,6 +51,7 @@
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
+#include <QResizeEvent>
 #include <QScreen>
 #include <QScrollBar>
 #include <QSignalBlocker>
@@ -200,9 +201,9 @@ void MainWindow::restoreWindow()
   // Replace the previous oversized default, preserve custom sizes, and keep
   // the window inside the available screen area on scaled displays.
   const auto available = targetScreen->availableGeometry().adjusted(8, 8, -8, -8);
-  QSize preferred = windowGeometry.isValid() ? windowGeometry.size() : QSize(700, 440);
-  if (preferred.height() < minimumHeight() || preferred == QSize(860, 720))
-    preferred = QSize(700, 440);
+  QSize preferred = windowGeometry.isValid() ? windowGeometry.size() : QSize(560, 300);
+  if (preferred.height() < minimumHeight() || preferred == QSize(860, 720) || preferred == QSize(700, 440))
+    preferred = QSize(560, 300);
   preferred = preferred.expandedTo(minimumSize()).boundedTo(available.size());
   if (!windowGeometry.isValid())
     windowGeometry = QRect(available.center() - QPoint(preferred.width() / 2, preferred.height() / 2), preferred);
@@ -215,6 +216,48 @@ void MainWindow::restoreWindow()
       std::clamp(windowGeometry.top(), available.top(), available.bottom() - preferred.height() + 1)
   );
   setGeometry(windowGeometry);
+  scheduleContentFit();
+}
+
+void MainWindow::scheduleContentFit()
+{
+  if (m_contentFitQueued)
+    return;
+  m_contentFitQueued = true;
+  QTimer::singleShot(0, this, [this] {
+    const int previousWidth = ui->contentScroll->viewport()->width();
+    fitToContent();
+    m_contentFitQueued = false;
+    if (ui->contentScroll->viewport()->width() != previousWidth)
+      scheduleContentFit();
+  });
+}
+
+void MainWindow::fitToContent()
+{
+  if (isMaximized() || isFullScreen() || isMinimized() || !screen())
+    return;
+  ui->contentLayout->activate();
+  const int contentWidth = ui->contentScroll->viewport()->width();
+  const int contentHeight = ui->contentLayout->hasHeightForWidth()
+                                ? ui->contentLayout->totalHeightForWidth(contentWidth)
+                                : ui->contentLayout->totalSizeHint().height();
+  const auto available = screen()->availableGeometry().adjusted(8, 8, -8, -8);
+  const int frameHeight = std::max(0, frameGeometry().height() - height());
+  const int maximumHeight = std::max(minimumHeight(), available.height() - frameHeight);
+
+  // Budget for the menu, header, footer and dock before changing the viewport;
+  // applying an uncapped size first would repeatedly toggle the scrollbar.
+  const auto *scrollItem = ui->mainLayout->itemAt(ui->mainLayout->indexOf(ui->contentScroll));
+  const int chromeHeight = sizeHint().height() - scrollItem->sizeHint().height();
+  const int viewportHeight = std::clamp(contentHeight, 0, std::max(0, maximumHeight - chromeHeight));
+  if (ui->contentScroll->minimumHeight() != viewportHeight || ui->contentScroll->maximumHeight() != viewportHeight) {
+    ui->contentScroll->setFixedHeight(viewportHeight);
+    layout()->activate();
+  }
+  resize(width(), std::min(sizeHint().height(), maximumHeight));
+  if (frameGeometry().bottom() > available.bottom())
+    move(x(), std::max(available.top(), y() - (frameGeometry().bottom() - available.bottom())));
 }
 
 void MainWindow::setupControls()
@@ -250,7 +293,7 @@ void MainWindow::setupControls()
     ui->btnSaveServerConfig->setIconSize(QSize(22, 22));
   }
   m_statusBar->setCompact(true);
-  ui->footerLayout->insertWidget(1, m_statusBar);
+  ui->footerLayout->insertWidget(2, m_statusBar);
   ui->deviceLayout->addWidget(m_deviceOverview);
   ui->transferLayout->addWidget(m_fileTransferWidget);
   ui->cacheLayout->addWidget(m_cacheStatusWidget);
@@ -259,7 +302,7 @@ void MainWindow::setupControls()
   m_fileTransferWidget->setAvailable(Settings::value(Settings::Core::FileTransferEnabled).toBool());
   m_cacheStatusWidget->refresh();
   ui->btnSettings->setIcon(QIcon::fromTheme(QStringLiteral("configure")));
-  ui->brandIcon->setPixmap(QIcon::fromTheme(kRevFqdnName).pixmap(QSize(36, 36)));
+  ui->brandIcon->setPixmap(QIcon::fromTheme(kRevFqdnName).pixmap(QSize(24, 24)));
   const bool needsConfiguration =
       coreMode == CoreMode::None ||
       (coreMode == CoreMode::Client && Settings::value(Settings::Client::RemoteHost).toString().isEmpty());
@@ -269,7 +312,13 @@ void MainWindow::setupControls()
   ui->btnLogs->setChecked(Settings::value(Settings::Gui::LogExpanded).toBool());
   ui->btnLogs->setArrowType(ui->btnLogs->isChecked() ? Qt::DownArrow : Qt::RightArrow);
   ui->contentScroll->setMinimumSize(0, 0);
-  setMinimumSize(420, 320);
+  ui->contentWidget->installEventFilter(this);
+  ui->topLevelWidget->installEventFilter(this);
+  m_deviceOverview->installEventFilter(this);
+  m_fileTransferWidget->installEventFilter(this);
+  m_cacheStatusWidget->installEventFilter(this);
+  ui->contentScroll->viewport()->installEventFilter(this);
+  setMinimumSize(420, 220);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -291,6 +340,7 @@ void MainWindow::connectSlots()
       Qt::QueuedConnection
   );
   connect(&m_coreProcess, &CoreProcess::connectionStateChanged, this, &MainWindow::coreConnectionStateChanged);
+  connect(&m_coreProcess, &CoreProcess::connectionEndpointsChanged, this, &MainWindow::updateDeviceOverview);
   connect(&m_coreProcess, &CoreProcess::secureSocket, this, &MainWindow::secureSocket);
   connect(
       &m_coreProcess, &CoreProcess::daemonIpcClientConnectionFailed, this, &MainWindow::daemonIpcClientConnectionFailed
@@ -360,6 +410,7 @@ void MainWindow::connectSlots()
   connect(ui->rbModeClient, &QRadioButton::toggled, this, &MainWindow::coreModeToggled);
 
   connect(m_logDock->toggleViewAction(), &QAction::toggled, this, &MainWindow::toggleLogVisible);
+  connect(m_logDock, &QDockWidget::topLevelChanged, this, &MainWindow::scheduleContentFit);
 
   connect(m_statusBar, &StatusBar::requestShowMyFingerprints, this, &MainWindow::showMyFingerprint);
   connect(m_statusBar, &StatusBar::requestUpdateVersion, this, &MainWindow::openGetNewVersionUrl);
@@ -390,6 +441,7 @@ void MainWindow::toggleLogVisible(bool visible)
   if (visible && !m_logDock->isFloating())
     resizeDocks({m_logDock}, {std::max(130, height() / 3)}, Qt::Vertical);
   Settings::setValue(Settings::Gui::WindowGeometry, geometry());
+  scheduleContentFit();
 }
 
 void MainWindow::settingsChanged(const QString &key)
@@ -1059,12 +1111,17 @@ void MainWindow::updateDeviceOverview()
   const bool running = m_coreProcess.processState() == ProcessState::Started;
   const bool connected = running && m_coreProcess.connectionState() == ConnectionState::Connected;
   const auto localName = Settings::value(Settings::Core::ComputerName).toString();
-  const auto boundAddress = Settings::value(Settings::Core::Interface).toString();
-  const auto localAddresses =
-      boundAddress.isEmpty() ? NetworkMonitor::validAddresses().join(QStringLiteral(", ")) : boundAddress;
+  const auto &endpoints = m_coreProcess.connectionEndpoints();
+  QStringList localAddresses;
+  if (connected) {
+    for (const auto &endpoint : endpoints) {
+      if (!endpoint.localAddress.isEmpty() && !localAddresses.contains(endpoint.localAddress))
+        localAddresses.append(endpoint.localAddress);
+    }
+  }
   DeviceOverviewWidget::Device local;
   local.name = localName;
-  local.address = localAddresses.isEmpty() ? tr("No network address detected") : localAddresses;
+  local.address = localAddresses.join(QStringLiteral(", "));
   local.role =
       isServer ? tr("This computer · Server") : (isClient ? tr("This computer · Client") : tr("This computer"));
   local.status = running ? tr("Running") : tr("Not running");
@@ -1102,6 +1159,14 @@ void MainWindow::updateDeviceOverview()
         }
       }
       peer.status = peer.connected ? tr("Connected") : tr("Offline");
+      if (peer.connected) {
+        for (const auto &endpoint : endpoints) {
+          if (endpoint.name == screenConfig.name() || screenConfig.aliases().contains(endpoint.name)) {
+            peer.address = endpoint.peerAddress;
+            break;
+          }
+        }
+      }
       devices.append(peer);
     }
     // A configuration file or a just-connected unknown client can lack a
@@ -1121,9 +1186,8 @@ void MainWindow::updateDeviceOverview()
     if (isClient) {
       DeviceOverviewWidget::Device peer;
       peer.name = tr("Server computer");
-      const auto configuredAddress = Settings::value(Settings::Client::RemoteHost).toString();
-      peer.address = configuredAddress.isEmpty() ? tr("Server address not configured")
-                                                 : tr("Configured address: %1").arg(configuredAddress);
+      if (connected && !endpoints.isEmpty())
+        peer.address = endpoints.front().peerAddress;
       peer.role = tr("Other computer · Server");
       peer.status = connected ? tr("Connected") : tr("Not connected");
       peer.connected = connected;
@@ -1133,6 +1197,14 @@ void MainWindow::updateDeviceOverview()
       for (const auto &client : m_connectedClients) {
         DeviceOverviewWidget::Device peer;
         peer.name = client;
+        if (connected) {
+          for (const auto &endpoint : endpoints) {
+            if (endpoint.name == client) {
+              peer.address = endpoint.peerAddress;
+              break;
+            }
+          }
+        }
         peer.role = tr("Other computer · Client");
         peer.status = connected ? tr("Connected") : tr("Offline");
         peer.connected = connected;
@@ -1234,7 +1306,7 @@ void MainWindow::changeEvent(QEvent *e)
         deskflow::platform::isWindows() ? QIcon(QStringLiteral(":/deskflow.ico")) : QIcon::fromTheme(kRevFqdnName)
     );
     setTrayIcon();
-    ui->brandIcon->setPixmap(QIcon::fromTheme(kRevFqdnName).pixmap(QSize(36, 36)));
+    ui->brandIcon->setPixmap(QIcon::fromTheme(kRevFqdnName).pixmap(QSize(24, 24)));
   } else if (e->type() == QEvent::LanguageChange) {
     ui->retranslateUi(this);
     updateModeControlLabels();
@@ -1247,6 +1319,10 @@ void MainWindow::changeEvent(QEvent *e)
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 {
+  if (event->type() == QEvent::LayoutRequest ||
+      (obj == ui->contentScroll->viewport() && event->type() == QEvent::Resize &&
+       static_cast<QResizeEvent *>(event)->size().width() != static_cast<QResizeEvent *>(event)->oldSize().width()))
+    scheduleContentFit();
   if (obj != ui->lineEditName || event->type() != QEvent::KeyPress)
     return false;
   if (const auto keyEvent = static_cast<QKeyEvent *>(event); keyEvent->key() != Qt::Key_Escape)

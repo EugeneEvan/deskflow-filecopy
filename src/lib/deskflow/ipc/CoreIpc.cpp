@@ -8,7 +8,21 @@
 
 #include "CoreIpcServer.h"
 
+#include <QJsonDocument>
 #include <QMetaEnum>
+
+void ipcSendConnectionEndpoints(const QJsonArray &endpoints)
+{
+  using deskflow::core::ipc::CoreIpcServer;
+  if (!CoreIpcServer::available()) {
+    return;
+  }
+  const auto json = QString::fromUtf8(QJsonDocument(endpoints).toJson(QJsonDocument::Compact));
+  auto &server = CoreIpcServer::instance();
+  QMetaObject::invokeMethod(
+      &server, [json] { CoreIpcServer::instance().setConnectionEndpoints(json); }, Qt::QueuedConnection
+  );
+}
 
 void ipcSendToClient(const QString &command, const QString &args, bool replacePending)
 {

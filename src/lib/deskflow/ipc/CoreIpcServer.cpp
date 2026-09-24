@@ -39,9 +39,19 @@ bool CoreIpcServer::available()
   return s_instance != nullptr;
 }
 
+void CoreIpcServer::setConnectionEndpoints(const QString &json)
+{
+  m_connectionEndpoints = json;
+  broadcastCommand(QStringLiteral("connectionEndpoints"), json, true);
+}
+
 void CoreIpcServer::processCommand(QLocalSocket *clientSocket, const QString &command, const QStringList &parts)
 {
   Q_UNUSED(parts)
+  if (command == QStringLiteral("getConnectionEndpoints")) {
+    writeToClientSocket(clientSocket, QStringLiteral("connectionEndpoints=%1").arg(m_connectionEndpoints));
+    return;
+  }
   if (command == QStringLiteral("cancelFileTransfer")) {
     FileTransferBridge::requestCancelAll();
     writeToClientSocket(clientSocket, QStringLiteral("ok"));

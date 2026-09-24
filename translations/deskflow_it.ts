@@ -635,10 +635,6 @@ Nomi validi:
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>No network address detected</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>This computer · Server</source>
         <translation type="unfinished"></translation>
     </message>
@@ -668,14 +664,6 @@ Nomi validi:
     </message>
     <message>
         <source>Server computer</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Server address not configured</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Configured address: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -794,6 +782,10 @@ Inoltre, verifica di poter %1 il file di configurazione del server: %2</translat
     <message>
         <source>Logs</source>
         <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Connection</source>
+        <translation>Connessione</translation>
     </message>
 </context>
 <context>

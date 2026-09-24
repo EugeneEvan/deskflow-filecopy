@@ -9,6 +9,8 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
+#include <utility>
 
 class IEventQueue;
 
@@ -101,6 +103,12 @@ public:
   return zero.
   */
   virtual uint32_t getSize() const = 0;
+
+  //! Actual connected socket endpoints, if this stream is backed by a socket.
+  virtual std::pair<std::string, std::string> getSocketAddresses() const
+  {
+    return {};
+  }
 
   //@}
 };

@@ -56,8 +56,8 @@ QWidget *makeCard(const DeviceOverviewWidget::Device &device, QWidget *parent)
   card->setAutoFillBackground(true);
   card->setMinimumWidth(150);
   auto *layout = new QVBoxLayout(card);
-  layout->setContentsMargins(10, 8, 10, 8);
-  layout->setSpacing(4);
+  layout->setContentsMargins(8, 5, 8, 5);
+  layout->setSpacing(2);
   layout->setAlignment(Qt::AlignTop);
 
   auto *heading = new QHBoxLayout;
@@ -71,7 +71,6 @@ QWidget *makeCard(const DeviceOverviewWidget::Device &device, QWidget *parent)
   auto *name = new DeviceLabel(device.name, card);
   auto font = name->font();
   font.setBold(true);
-  font.setPointSizeF(font.pointSizeF() + 1);
   name->setFont(font);
   layout->addWidget(name);
   if (!device.address.isEmpty())
@@ -91,7 +90,7 @@ DeviceOverviewWidget::DeviceOverviewWidget(QWidget *parent)
   layout->setContentsMargins(0, 0, 0, 0);
   layout->addWidget(m_group);
   auto *groupLayout = new QVBoxLayout(m_group);
-  groupLayout->setContentsMargins(8, 12, 8, 6);
+  groupLayout->setContentsMargins(6, 12, 6, 5);
   m_grid->setContentsMargins(0, 0, 0, 0);
   m_grid->setSpacing(8);
   groupLayout->addLayout(m_grid);

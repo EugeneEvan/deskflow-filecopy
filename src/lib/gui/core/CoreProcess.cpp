@@ -23,6 +23,10 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#include <QHostAddress>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QMetaEnum>
 #include <QMutexLocker>
 #include <QRegularExpression>
@@ -468,11 +472,13 @@ void CoreProcess::start(std::optional<ProcessMode> processModeOption)
           connect(m_coreIpcClient, &ipc::CoreIpcClient::connected, this, [] {
             qDebug("connected to core ipc server");
           });
-          connect(m_coreIpcClient, &ipc::CoreIpcClient::connectionFailed, this, [] {
+          connect(m_coreIpcClient, &ipc::CoreIpcClient::connectionFailed, this, [this] {
             qWarning("failed to establish core ipc connection");
+            setConnectionEndpoints({});
           });
           connect(m_coreIpcClient, &ipc::CoreIpcClient::serverShutdown, this, [this, client = m_coreIpcClient] {
             qDebug("core ipc server shut down cleanly");
+            setConnectionEndpoints({});
             client->deleteLater();
             if (m_coreIpcClient == client)
               m_coreIpcClient = nullptr;
@@ -597,6 +603,9 @@ QPair<bool, QString> CoreProcess::persistServerConfig() const
 
 void CoreProcess::setConnectionState(ConnectionState state)
 {
+  if (state != ConnectionState::Connected) {
+    setConnectionEndpoints({});
+  }
   if (m_connectionState == state) {
     return;
   }
@@ -607,6 +616,9 @@ void CoreProcess::setConnectionState(ConnectionState state)
 
 void CoreProcess::setProcessState(ProcessState state)
 {
+  if (state != ProcessState::Started) {
+    setConnectionEndpoints({});
+  }
   if (m_processState == state) {
     return;
   }
@@ -621,7 +633,9 @@ void CoreProcess::setProcessState(ProcessState state)
 
 void CoreProcess::onCoreIpcMessageReceived(const QString &command, const QString &args)
 {
-  if (command == "connectionState") {
+  if (command == "connectionEndpoints") {
+    updateConnectionEndpoints(args);
+  } else if (command == "connectionState") {
     const auto metaEnum = QMetaEnum::fromType<ConnectionState>();
     bool ok = false;
     const auto state = static_cast<ConnectionState>(metaEnum.keyToValue(args.toUtf8().constData(), &ok));
@@ -660,6 +674,37 @@ void CoreProcess::onCoreIpcMessageReceived(const QString &command, const QString
   } else if (command == "fileTransfer") {
     Q_EMIT fileTransferStatusChanged(args);
   }
+}
+
+void CoreProcess::setConnectionEndpoints(const QList<ConnectionEndpoint> &endpoints)
+{
+  if (m_connectionEndpoints != endpoints) {
+    m_connectionEndpoints = endpoints;
+    Q_EMIT connectionEndpointsChanged();
+  }
+}
+
+void CoreProcess::updateConnectionEndpoints(const QString &json)
+{
+  const auto document = QJsonDocument::fromJson(json.toUtf8());
+  QList<ConnectionEndpoint> endpoints;
+  if (document.isArray()) {
+    for (const auto &value : document.array()) {
+      const auto object = value.toObject();
+      ConnectionEndpoint endpoint{
+          object.value("name").toString(), object.value("localAddress").toString(),
+          object.value("peerAddress").toString()
+      };
+      const QHostAddress local(endpoint.localAddress), peer(endpoint.peerAddress);
+      if (local.isNull() || peer.isNull() || local == QHostAddress::Any || local == QHostAddress::AnyIPv4 ||
+          local == QHostAddress::AnyIPv6 || peer == QHostAddress::Any || peer == QHostAddress::AnyIPv4 ||
+          peer == QHostAddress::AnyIPv6) {
+        continue;
+      }
+      endpoints.append(endpoint);
+    }
+  }
+  setConnectionEndpoints(endpoints);
 }
 
 void CoreProcess::cancelFileTransfer()

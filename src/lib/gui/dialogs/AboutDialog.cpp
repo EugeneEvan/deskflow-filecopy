@@ -32,7 +32,7 @@ AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent), ui{std::make_unique
   ui->lblVersion->setText(kDisplayVersion);
   setWindowTitle(tr("About Deskflow FileCopy"));
   ui->lblDescription->setText(QStringLiteral(
-      "Deskflow FileCopy 0.3.1\n"
+      "Deskflow FileCopy 0.3.2\n"
       "Windows file copy, based on Deskflow\n"
       "Independent derivative maintained by EugeneEvan"
   ));
@@ -54,7 +54,7 @@ AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent), ui{std::make_unique
 
 void AboutDialog::copyVersionText() const
 {
-  QString infoString = QStringLiteral("Deskflow FileCopy 0.3.1\n%1: %2 (%3)\nQt: %4\nSystem: %5")
+  QString infoString = QStringLiteral("Deskflow FileCopy 0.3.2\n%1: %2 (%3)\nQt: %4\nSystem: %5")
                            .arg(kAppName, kVersion, kVersionGitSha, qVersion(), QSysInfo::prettyProductName());
   if (Settings::isPortableMode()) {
     infoString.append(QStringLiteral("\nPortable Mode"));

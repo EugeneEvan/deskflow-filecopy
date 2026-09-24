@@ -44,6 +44,7 @@ public:
   void *getEventTarget() const override;
   bool isReady() const override;
   uint32_t getSize() const override;
+  std::pair<std::string, std::string> getSocketAddresses() const override;
 
   //! Get the stream
   /*!

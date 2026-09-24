@@ -222,6 +222,29 @@ ArchSocket ArchNetworkWinsock::newSocket(AddressFamily family, SocketType type)
   return socket;
 }
 
+std::pair<std::string, std::string> ArchNetworkWinsock::getSocketAddresses(ArchSocket s)
+{
+  if (!s) {
+    return {};
+  }
+  sockaddr_storage local{}, peer{};
+  int localSize = sizeof(local), peerSize = sizeof(peer);
+  if (::getpeername(s->m_socket, reinterpret_cast<sockaddr *>(&peer), &peerSize) != 0 ||
+      ::getsockname(s->m_socket, reinterpret_cast<sockaddr *>(&local), &localSize) != 0) {
+    return {};
+  }
+  char localHost[NI_MAXHOST]{}, peerHost[NI_MAXHOST]{};
+  if (::getnameinfo(
+          reinterpret_cast<sockaddr *>(&local), localSize, localHost, sizeof(localHost), nullptr, 0, NI_NUMERICHOST
+      ) != 0 ||
+      ::getnameinfo(
+          reinterpret_cast<sockaddr *>(&peer), peerSize, peerHost, sizeof(peerHost), nullptr, 0, NI_NUMERICHOST
+      ) != 0) {
+    return {};
+  }
+  return {localHost, peerHost};
+}
+
 ArchSocket ArchNetworkWinsock::copySocket(ArchSocket s)
 {
   assert(s != nullptr);

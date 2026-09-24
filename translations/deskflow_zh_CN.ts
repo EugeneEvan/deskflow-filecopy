@@ -804,7 +804,7 @@ Valid names:
     </message>
     <message>
         <source>No network address detected</source>
-        <translation>未检测到网络地址</translation>
+        <translation type="vanished">未检测到网络地址</translation>
     </message>
     <message>
         <source>This computer · Server</source>
@@ -844,11 +844,11 @@ Valid names:
     </message>
     <message>
         <source>Server address not configured</source>
-        <translation>尚未配置主控地址</translation>
+        <translation type="vanished">尚未配置主控地址</translation>
     </message>
     <message>
         <source>Configured address: %1</source>
-        <translation>配置的地址：%1</translation>
+        <translation type="vanished">配置的地址：%1</translation>
     </message>
     <message>
         <source>Other computer · Server</source>
@@ -941,6 +941,10 @@ Additionally, check you are able to %1 the server config file: %2</source>
     <message>
         <source>Logs</source>
         <translation>日志</translation>
+    </message>
+    <message>
+        <source>Connection</source>
+        <translation>连接</translation>
     </message>
 </context>
 <context>

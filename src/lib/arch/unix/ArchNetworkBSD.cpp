@@ -95,6 +95,29 @@ ArchSocket ArchNetworkBSD::newSocket(AddressFamily family, SocketType type)
   return newSocket;
 }
 
+std::pair<std::string, std::string> ArchNetworkBSD::getSocketAddresses(ArchSocket s)
+{
+  if (!s) {
+    return {};
+  }
+  sockaddr_storage local{}, peer{};
+  socklen_t localSize = sizeof(local), peerSize = sizeof(peer);
+  if (::getpeername(s->m_fd, reinterpret_cast<sockaddr *>(&peer), &peerSize) != 0 ||
+      ::getsockname(s->m_fd, reinterpret_cast<sockaddr *>(&local), &localSize) != 0) {
+    return {};
+  }
+  char localHost[NI_MAXHOST]{}, peerHost[NI_MAXHOST]{};
+  if (::getnameinfo(
+          reinterpret_cast<sockaddr *>(&local), localSize, localHost, sizeof(localHost), nullptr, 0, NI_NUMERICHOST
+      ) != 0 ||
+      ::getnameinfo(
+          reinterpret_cast<sockaddr *>(&peer), peerSize, peerHost, sizeof(peerHost), nullptr, 0, NI_NUMERICHOST
+      ) != 0) {
+    return {};
+  }
+  return {localHost, peerHost};
+}
+
 ArchSocket ArchNetworkBSD::copySocket(ArchSocket s)
 {
   assert(s != nullptr);

@@ -141,6 +141,8 @@ private:
   void showConfigureServer(const QString &message);
   void showConfigureClient();
   void restoreWindow();
+  void scheduleContentFit();
+  void fitToContent();
   void setupControls();
   void showFirstConnectedMessage();
   void updateStatus();
@@ -197,6 +199,7 @@ private:
   deskflow::gui::FileTransferWidget *m_fileTransferWidget = nullptr;
   deskflow::gui::CacheStatusWidget *m_cacheStatusWidget = nullptr;
   QStringList m_connectedClients;
+  bool m_contentFitQueued = false;
 
   // Window Menu
   QMenu *m_menuFile = nullptr;

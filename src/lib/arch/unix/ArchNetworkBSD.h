@@ -80,6 +80,7 @@ public:
   void listenOnSocket(ArchSocket s) override;
   ArchSocket acceptSocket(ArchSocket s, ArchNetAddress *addr) override;
   bool connectSocket(ArchSocket s, ArchNetAddress name) override;
+  std::pair<std::string, std::string> getSocketAddresses(ArchSocket s) override;
   int pollSocket(PollEntry[], int num, double timeout) override;
   void unblockPollSocket(ArchThread thread) override;
   size_t readSocket(ArchSocket s, void *buf, size_t len) override;

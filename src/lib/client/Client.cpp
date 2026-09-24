@@ -32,6 +32,7 @@
 #include "net/ISocketFactory.h"
 #include "net/SecureSocket.h"
 #include "net/TCPSocket.h"
+#include <QJsonObject>
 
 #include <QMetaEnum>
 
@@ -179,6 +180,20 @@ void Client::handshakeComplete()
   if (m_relativeMouseMoves && !m_hasRelativeRestorePosition) {
     saveRelativeRestorePosition();
   }
+  QJsonArray endpoints;
+  if (m_stream) {
+    const auto [local, peer] = m_stream->getSocketAddresses();
+    if (!local.empty() && !peer.empty()) {
+      endpoints.append(
+          QJsonObject{
+              {"name", QString()},
+              {"localAddress", QString::fromStdString(local)},
+              {"peerAddress", QString::fromStdString(peer)}
+          }
+      );
+    }
+  }
+  ipcSendConnectionEndpoints(endpoints);
   sendEvent(EventTypes::ClientConnected);
 }
 
@@ -578,6 +593,7 @@ void Client::cleanupTimer()
 
 void Client::cleanupStream()
 {
+  ipcSendConnectionEndpoints({});
   delete m_stream;
   m_stream = nullptr;
 }

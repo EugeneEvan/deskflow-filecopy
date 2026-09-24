@@ -14,7 +14,7 @@ namespace deskflow::gui::ipc {
 
 CoreIpcClient::CoreIpcClient(QObject *parent) : IpcClient(parent, kCoreIpcName, QStringLiteral("core"))
 {
-  // do nothing
+  connect(this, &CoreIpcClient::connected, this, [this] { sendMessage(QStringLiteral("getConnectionEndpoints")); });
 }
 
 void CoreIpcClient::sendStop()

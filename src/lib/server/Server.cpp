@@ -32,6 +32,7 @@
 #include <algorithm>
 #include <array>
 #endif
+#include <QJsonObject>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -321,12 +322,26 @@ void Server::sendConnectedClientsIpc() const
 {
   const auto primaryName = getName(m_primaryClient);
   QStringList clientList;
-  for (const auto &[name, _] : m_clients) {
+  QJsonArray endpoints;
+  for (const auto &[name, client] : m_clients) {
     if (name != primaryName) {
       clientList.append(QString::fromStdString(name));
+      if (const auto *stream = client->getStream()) {
+        const auto [local, peer] = stream->getSocketAddresses();
+        if (!local.empty() && !peer.empty()) {
+          endpoints.append(
+              QJsonObject{
+                  {"name", QString::fromStdString(name)},
+                  {"localAddress", QString::fromStdString(local)},
+                  {"peerAddress", QString::fromStdString(peer)}
+              }
+          );
+        }
+      }
     }
   }
   ipcSendToClient("connectedClients", clientList.join(","));
+  ipcSendConnectionEndpoints(endpoints);
 }
 
 std::string Server::getName(const BaseClientProxy *client) const
@@ -2040,6 +2055,7 @@ void Server::closeClient(BaseClientProxy *client, const char *msg)
 
   // move client to closing list
   removeClient(client);
+  sendConnectedClientsIpc();
 
   m_oldClients.try_emplace(client, timer);
 

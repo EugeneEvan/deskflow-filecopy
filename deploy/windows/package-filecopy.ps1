@@ -14,7 +14,7 @@ OutputDirectory must be outside the source tree. Each run creates a fresh stage.
   -CrtDirectory F:/deskflow-tools/msvc/VC/Redist/MSVC/14.44.35112/x64/Microsoft.VC143.CRT `
   -Dumpbin F:/deskflow-tools/msvc/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/dumpbin.exe `
   -Iscc F:/deskflow-tools/innosetup-6.7.3/ISCC.exe -OutputDirectory F:/deskflow-releases `
-  -Version 0.3.1 -ProjectUrl https://github.com/EugeneEvan/deskflow-filecopy
+  -Version 0.3.2 -ProjectUrl https://github.com/EugeneEvan/deskflow-filecopy
 #>
 [CmdletBinding()]
 param(

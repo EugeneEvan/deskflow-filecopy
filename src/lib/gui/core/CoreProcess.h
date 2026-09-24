@@ -12,12 +12,21 @@
 #include "gui/FileTail.h"
 #include "gui/config/ServerConfig.h"
 
+#include <QList>
 #include <QMutex>
 #include <QObject>
 #include <QProcess>
 #include <QTimer>
 
 namespace deskflow::gui {
+
+struct ConnectionEndpoint
+{
+  QString name;
+  QString localAddress;
+  QString peerAddress;
+  bool operator==(const ConnectionEndpoint &) const = default;
+};
 
 namespace ipc {
 class CoreIpcClient;
@@ -70,6 +79,10 @@ public:
   {
     return m_connectionState;
   }
+  const QList<ConnectionEndpoint> &connectionEndpoints() const
+  {
+    return m_connectionEndpoints;
+  }
 
   // setters
   void setAddress(const QString &address)
@@ -96,6 +109,7 @@ Q_SIGNALS:
   void peerFingerprint(const QString &fingerprint);
   void missingKeyboardLayouts(const QString &layouts);
   void fileTransferStatusChanged(const QString &statusJson);
+  void connectionEndpointsChanged();
 
 private Q_SLOTS:
   void onProcessFinished(int exitCode, QProcess::ExitStatus);
@@ -111,6 +125,8 @@ private:
   void stopProcessFromDaemon();
   QPair<bool, QString> persistServerConfig() const;
   void setConnectionState(ConnectionState state);
+  void setConnectionEndpoints(const QList<ConnectionEndpoint> &endpoints);
+  void updateConnectionEndpoints(const QString &json);
   void setProcessState(ProcessState state);
   bool checkSecureSocket(const QString &line);
   void handleLogLines(const QString &text);
@@ -126,6 +142,7 @@ private:
   QString m_address;
   ProcessState m_processState = ProcessState::Stopped;
   ConnectionState m_connectionState = ConnectionState::Disconnected;
+  QList<ConnectionEndpoint> m_connectionEndpoints;
   Settings::CoreMode m_mode = Settings::CoreMode::None;
   QMutex m_processMutex;
   QString m_secureSocketVersion;

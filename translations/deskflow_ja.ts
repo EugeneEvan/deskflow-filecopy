@@ -659,10 +659,6 @@ Valid names:
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>No network address detected</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>This computer · Server</source>
         <translation type="unfinished"></translation>
     </message>
@@ -692,14 +688,6 @@ Valid names:
     </message>
     <message>
         <source>Server computer</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Server address not configured</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Configured address: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -793,6 +781,10 @@ Additionally, check you are able to %1 the server config file: %2</source>
     <message>
         <source>Logs</source>
         <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Connection</source>
+        <translation>接続</translation>
     </message>
 </context>
 <context>

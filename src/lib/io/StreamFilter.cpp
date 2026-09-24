@@ -7,7 +7,13 @@
  */
 
 #include "io/StreamFilter.h"
+
 #include "base/IEventQueue.h"
+
+std::pair<std::string, std::string> StreamFilter::getSocketAddresses() const
+{
+  return m_stream->getSocketAddresses();
+}
 
 //
 // StreamFilter

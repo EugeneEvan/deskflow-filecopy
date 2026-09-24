@@ -232,6 +232,12 @@ bool TCPSocket::isReady() const
   return (m_inputBuffer.getSize() > 0);
 }
 
+std::pair<std::string, std::string> TCPSocket::getSocketAddresses() const
+{
+  Lock lock(&m_mutex);
+  return m_socket && m_connected ? ARCH->getSocketAddresses(m_socket) : std::pair<std::string, std::string>{};
+}
+
 bool TCPSocket::isFatal() const
 {
   // TCP sockets aren't ever left in a fatal state.

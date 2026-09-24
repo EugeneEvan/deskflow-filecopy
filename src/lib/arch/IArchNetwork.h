@@ -10,6 +10,7 @@
 
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 class ArchThreadImpl;
@@ -167,6 +168,9 @@ public:
   or fails.
   */
   virtual bool connectSocket(ArchSocket s, ArchNetAddress addr) = 0;
+
+  //! Numeric local/peer IPs of a connected socket; empty on failure, with no DNS lookup.
+  virtual std::pair<std::string, std::string> getSocketAddresses(ArchSocket s) = 0;
 
   //! Check socket state
   /*!
