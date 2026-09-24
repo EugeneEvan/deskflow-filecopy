@@ -418,13 +418,16 @@ void Client::sendClipboard(ClipboardID id)
   if (clipboard.open(m_timeClipboard[id])) {
     clipboard.close();
   }
-  m_screen->getClipboard(id, &clipboard);
+  if (!m_screen->getClipboard(id, &clipboard)) {
+    LOG_WARN("failed to read local clipboard; keeping previous client clipboard state");
+    return;
+  }
 
   // check time
   if (m_timeClipboard[id] == 0 || clipboard.getTime() != m_timeClipboard[id]) {
     // marshall the data
     std::string data = clipboard.marshall();
-    if (data.size() >= m_maximumClipboardSize * 1024) {
+    if (data.size() > m_maximumClipboardSize * 1024) {
       LOG_WARN("not sending clipboard data, exceeds limit: %zu KB", m_maximumClipboardSize);
       return;
     }

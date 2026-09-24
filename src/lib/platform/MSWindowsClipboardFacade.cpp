@@ -7,6 +7,26 @@
 
 #include "platform/MSWindowsClipboardFacade.h"
 
+bool MSWindowsClipboardFacade::open(HWND window) const
+{
+  return OpenClipboard(window) != 0;
+}
+
+void MSWindowsClipboardFacade::close() const
+{
+  CloseClipboard();
+}
+
+bool MSWindowsClipboardFacade::isFormatAvailable(UINT format) const
+{
+  return IsClipboardFormatAvailable(format) != 0;
+}
+
+HANDLE MSWindowsClipboardFacade::read(UINT format) const
+{
+  return GetClipboardData(format);
+}
+
 void MSWindowsClipboardFacade::write(HANDLE win32Data, UINT win32Format)
 {
   if (SetClipboardData(win32Format, win32Data) == nullptr) {

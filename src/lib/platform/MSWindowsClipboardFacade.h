@@ -12,5 +12,9 @@
 class MSWindowsClipboardFacade : public IMSWindowsClipboardFacade
 {
 public:
+  bool open(HWND window) const override;
+  void close() const override;
+  bool isFormatAvailable(UINT format) const override;
+  HANDLE read(UINT format) const override;
   void write(HANDLE win32Data, UINT win32Format) override;
 };

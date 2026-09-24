@@ -1503,9 +1503,13 @@ void Server::onClipboardChanged(const BaseClientProxy *sender, ClipboardID id, u
   assert(sender == m_clients.find(clipboard.m_clipboardOwner)->second);
 
   // get data
-  sender->getClipboard(id, &clipboard.m_clipboard);
+  Clipboard current;
+  if (!sender->getClipboard(id, &current)) {
+    LOG_WARN("failed to read screen clipboard; keeping previous server clipboard state");
+    return;
+  }
 
-  std::string data = clipboard.m_clipboard.marshall();
+  std::string data = current.marshall();
   if (data.size() > m_maximumClipboardSize * 1024) {
     LOG_WARN("not sending clipboard data, exceeds limit: %i KB", m_maximumClipboardSize);
     return;
@@ -1519,6 +1523,7 @@ void Server::onClipboardChanged(const BaseClientProxy *sender, ClipboardID id, u
 
   // got new data
   LOG_INFO("screen \"%s\" updated clipboard %d", clipboard.m_clipboardOwner.c_str(), id);
+  Clipboard::copy(&clipboard.m_clipboard, &current);
   clipboard.m_clipboardData = data;
 
   // tell all clients except the sender that the clipboard is dirty

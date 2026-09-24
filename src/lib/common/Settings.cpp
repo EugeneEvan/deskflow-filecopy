@@ -262,7 +262,7 @@ QVariant Settings::defaultValue(const QString &key)
     return 250;
 
   if (key == Server::ClipboardSize)
-    return 3; // 3 MiB
+    return 64; // 64 MiB includes common uncompressed 4K screenshots.
 
   return QVariant();
 }

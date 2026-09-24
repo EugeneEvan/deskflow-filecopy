@@ -426,6 +426,13 @@ void MSWindowsDesks::destroyWindow(HWND hwnd) const
 
 LRESULT CALLBACK MSWindowsDesks::primaryDeskProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+  // Some touchpad/driver paths deliver wheel messages directly to the focus
+  // window. While controlling a client this is our desk window, so relay them
+  // too. Wheels handled by the low-level hook are swallowed there and do not
+  // reach this fallback. The hook mode keeps local-screen scrolling local.
+  if (MSWindowsHook::relayMouseWheelMessage(msg, wParam)) {
+    return 0;
+  }
   return DefWindowProc(hwnd, msg, wParam, lParam);
 }
 

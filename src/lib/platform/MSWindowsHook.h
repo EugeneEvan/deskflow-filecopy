@@ -65,6 +65,9 @@ public:
   //! Copy the hook's physical key state; false until it has observed an event.
   static bool getPhysicalKeyState(BYTE keys[256]);
 
+  //! Relay wheel messages delivered directly to the primary desk window.
+  static bool relayMouseWheelMessage(UINT message, WPARAM wParam);
+
   static EHookResult install();
 
   static int uninstall();

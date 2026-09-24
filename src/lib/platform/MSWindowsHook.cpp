@@ -593,6 +593,15 @@ static bool mouseHookHandler(WPARAM wParam, int32_t x, int32_t y, int32_t data)
   return false;
 }
 
+bool MSWindowsHook::relayMouseWheelMessage(UINT message, WPARAM wParam)
+{
+  if (message != WM_MOUSEWHEEL && message != WM_MOUSEHWHEEL) {
+    return false;
+  }
+  // Preserve signed, sub-WHEEL_DELTA values from precision touchpads.
+  return mouseHookHandler(message, 0, 0, static_cast<int16_t>(HIWORD(wParam)));
+}
+
 static LRESULT CALLBACK mouseLLHook(int code, WPARAM wParam, LPARAM lParam)
 {
   if (code >= 0) {

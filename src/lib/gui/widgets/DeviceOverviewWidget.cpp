@@ -90,7 +90,7 @@ DeviceOverviewWidget::DeviceOverviewWidget(QWidget *parent)
   layout->setContentsMargins(0, 0, 0, 0);
   layout->addWidget(m_group);
   auto *groupLayout = new QVBoxLayout(m_group);
-  groupLayout->setContentsMargins(6, 12, 6, 5);
+  groupLayout->setContentsMargins(6, 5, 6, 5);
   m_grid->setContentsMargins(0, 0, 0, 0);
   m_grid->setSpacing(8);
   groupLayout->addLayout(m_grid);
@@ -145,7 +145,6 @@ void DeviceOverviewWidget::changeEvent(QEvent *event)
 
 void DeviceOverviewWidget::updateText()
 {
-  m_group->setTitle(tr("Device connection"));
   m_group->setToolTip(
       m_layoutKnown ? tr("Devices follow the configured screen positions. Move the pointer across a shared edge.")
                     : tr("Screen positions are configured on the server; this view only lists the known devices.")

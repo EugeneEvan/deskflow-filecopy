@@ -946,6 +946,10 @@ Additionally, check you are able to %1 the server config file: %2</source>
         <source>Connection</source>
         <translation>连接</translation>
     </message>
+    <message>
+        <source>Device connection (%1)</source>
+        <translation>设备连接（%1）</translation>
+    </message>
 </context>
 <context>
     <name>NewScreenWidget</name>
@@ -1833,7 +1837,7 @@ Enabling this setting will disable the server config GUI.</source>
     <name>deskflow::gui::DeviceOverviewWidget</name>
     <message>
         <source>Device connection</source>
-        <translation>设备连接</translation>
+        <translation type="vanished">设备连接</translation>
     </message>
     <message>
         <source>Devices follow the configured screen positions. Move the pointer across a shared edge.</source>

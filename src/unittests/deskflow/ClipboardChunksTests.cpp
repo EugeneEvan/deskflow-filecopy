@@ -285,4 +285,81 @@ void ClipboardChunksTests::assembleRejectsExpectedSizeBeyondLimit()
   QVERIFY(!state.active);
 }
 
+void ClipboardChunksTests::imageSizedHeadersRespectReceiveLimit_data()
+{
+  QTest::addColumn<quint64>("size");
+  QTest::addColumn<quint64>("limit");
+  QTest::addColumn<bool>("accepted");
+  constexpr quint64 mib = 1024 * 1024;
+  // Raw 32-bit pixels plus INFOHEADER and the clipboard wire format header.
+  QTest::newRow("full-hd-exceeds-old-limit") << quint64(1920 * 1080 * 4 + 52) << 3 * mib << false;
+  QTest::newRow("full-hd-fits-new-limit") << quint64(1920 * 1080 * 4 + 52) << 64 * mib << true;
+  QTest::newRow("4k-fits-new-limit") << quint64(3840 * 2160 * 4 + 52) << 64 * mib << true;
+  QTest::newRow("exact-limit") << 64 * mib << 64 * mib << true;
+  QTest::newRow("over-limit") << 64 * mib + 1 << 64 * mib << false;
+}
+
+void ClipboardChunksTests::imageSizedHeadersRespectReceiveLimit()
+{
+  QFETCH(quint64, size);
+  QFETCH(quint64, limit);
+  QFETCH(bool, accepted);
+  MemoryStream stream;
+  stream.push(encodeClipboardMsg(0, 7, ChunkType::DataStart, std::to_string(size)));
+  std::string cached;
+  ClipboardID id = kClipboardEnd;
+  uint32_t sequence = 0;
+  ClipboardChunkAssemblyState state;
+  QCOMPARE(
+      ClipboardChunk::assemble(&stream, cached, id, sequence, state, static_cast<size_t>(limit)),
+      accepted ? TransferState::Started : TransferState::Error
+  );
+  QCOMPARE(state.active, accepted);
+  QCOMPARE(state.expectedSize, accepted ? static_cast<size_t>(size) : size_t{0});
+  QVERIFY(cached.empty());
+}
+
+void ClipboardChunksTests::assembleRecoversAfterRejectedSize()
+{
+  MemoryStream stream;
+  stream.push(encodeClipboardMsg(0, 7, ChunkType::DataStart, "5"));
+  stream.push(encodeClipboardMsg(0, 8, ChunkType::DataStart, "4"));
+  stream.push(encodeClipboardMsg(0, 8, ChunkType::DataChunk, "next"));
+  stream.push(encodeClipboardMsg(0, 8, ChunkType::DataEnd, ""));
+  std::string cached("stale");
+  ClipboardID id = kClipboardEnd;
+  uint32_t sequence = 0;
+  ClipboardChunkAssemblyState state;
+  QCOMPARE(ClipboardChunk::assemble(&stream, cached, id, sequence, state, 4), TransferState::Error);
+  QVERIFY(cached.empty());
+  QCOMPARE(ClipboardChunk::assemble(&stream, cached, id, sequence, state, 4), TransferState::Started);
+  QCOMPARE(ClipboardChunk::assemble(&stream, cached, id, sequence, state, 4), TransferState::InProgress);
+  QCOMPARE(ClipboardChunk::assemble(&stream, cached, id, sequence, state, 4), TransferState::Finished);
+  QCOMPARE(cached, std::string("next"));
+  QCOMPARE(sequence, uint32_t{8});
+}
+
+void ClipboardChunksTests::largeClipboardAssemblesAcrossChunks()
+{
+  const std::string payload(1920 * 1080 * 4 + 52, '\x7f');
+  constexpr size_t limit = 64 * 1024 * 1024;
+  constexpr size_t chunkSize = 512 * 1024;
+  MemoryStream stream;
+  stream.push(encodeClipboardMsg(0, 7, ChunkType::DataStart, std::to_string(payload.size())));
+  for (size_t offset = 0; offset < payload.size(); offset += chunkSize) {
+    stream.push(encodeClipboardMsg(0, 7, ChunkType::DataChunk, payload.substr(offset, chunkSize)));
+  }
+  stream.push(encodeClipboardMsg(0, 7, ChunkType::DataEnd, ""));
+  std::string cached;
+  ClipboardID id = kClipboardEnd;
+  uint32_t sequence = 0;
+  ClipboardChunkAssemblyState state;
+  QCOMPARE(ClipboardChunk::assemble(&stream, cached, id, sequence, state, limit), TransferState::Started);
+  for (size_t offset = 0; offset < payload.size(); offset += chunkSize) {
+    QCOMPARE(ClipboardChunk::assemble(&stream, cached, id, sequence, state, limit), TransferState::InProgress);
+  }
+  QCOMPARE(ClipboardChunk::assemble(&stream, cached, id, sequence, state, limit), TransferState::Finished);
+  QCOMPARE(cached, payload);
+}
+
 QTEST_MAIN(ClipboardChunksTests)

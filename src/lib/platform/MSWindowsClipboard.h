@@ -55,6 +55,7 @@ public:
   std::string get(Format) const override;
 
   void setFacade(IMSWindowsClipboardFacade &facade);
+  bool readSucceeded() const;
 
 private:
   void clearConverters();
@@ -71,6 +72,7 @@ private:
   HWND m_window;
   mutable std::mutex m_mutex;
   mutable Time m_time;
+  mutable bool m_readFailed = false;
   ConverterList m_converters;
   static UINT s_ownershipFormat;
   IMSWindowsClipboardFacade *m_facade;

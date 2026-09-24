@@ -16,6 +16,10 @@ class IMSWindowsClipboardConverter;
 class IMSWindowsClipboardFacade
 {
 public:
+  virtual bool open(HWND window) const = 0;
+  virtual void close() const = 0;
+  virtual bool isFormatAvailable(UINT format) const = 0;
+  virtual HANDLE read(UINT format) const = 0;
   virtual void write(HANDLE win32Data, UINT win32Format) = 0;
   virtual ~IMSWindowsClipboardFacade() = default;
 };

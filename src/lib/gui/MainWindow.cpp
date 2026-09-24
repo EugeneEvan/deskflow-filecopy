@@ -302,7 +302,6 @@ void MainWindow::setupControls()
   m_fileTransferWidget->setAvailable(Settings::value(Settings::Core::FileTransferEnabled).toBool());
   m_cacheStatusWidget->refresh();
   ui->btnSettings->setIcon(QIcon::fromTheme(QStringLiteral("configure")));
-  ui->brandIcon->setPixmap(QIcon::fromTheme(kRevFqdnName).pixmap(QSize(24, 24)));
   const bool needsConfiguration =
       coreMode == CoreMode::None ||
       (coreMode == CoreMode::Client && Settings::value(Settings::Client::RemoteHost).toString().isEmpty());
@@ -1099,8 +1098,12 @@ void MainWindow::updateConnectionSummary()
     }
     break;
   }
-  ui->connectionStatus->setText(summary);
-  ui->connectionStatus->setAccessibleName(summary);
+  const bool connected = m_coreProcess.isStarted() && m_coreProcess.connectionState() == ConnectionState::Connected;
+  const auto count = connected ? (m_coreProcess.mode() == CoreMode::Server ? m_connectedClients.size() : 1) : 0;
+  const auto title = tr("Device connection (%1)").arg(count);
+  ui->connectionStatus->setText(title);
+  ui->connectionStatus->setAccessibleName(title);
+  ui->connectionStatus->setToolTip(summary);
 }
 
 void MainWindow::updateDeviceOverview()
@@ -1306,7 +1309,6 @@ void MainWindow::changeEvent(QEvent *e)
         deskflow::platform::isWindows() ? QIcon(QStringLiteral(":/deskflow.ico")) : QIcon::fromTheme(kRevFqdnName)
     );
     setTrayIcon();
-    ui->brandIcon->setPixmap(QIcon::fromTheme(kRevFqdnName).pixmap(QSize(24, 24)));
   } else if (e->type() == QEvent::LanguageChange) {
     ui->retranslateUi(this);
     updateModeControlLabels();

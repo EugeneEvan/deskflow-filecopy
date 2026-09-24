@@ -3,6 +3,20 @@
 
 if (WIN32)
   create_test(
+    NAME MSWindowsClipboardImageTests
+    DEPENDS platform
+    LIBS base arch app
+    SOURCE MSWindowsClipboardImageTests.cpp
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/platform"
+  )
+  create_test(
+    NAME MSWindowsWheelTests
+    DEPENDS platform
+    LIBS base arch app mt
+    SOURCE MSWindowsWheelTests.cpp
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/platform"
+  )
+  create_test(
     NAME MSWindowsClipboardTests
     DEPENDS platform
     LIBS base arch app

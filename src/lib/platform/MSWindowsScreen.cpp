@@ -419,8 +419,7 @@ void *MSWindowsScreen::getEventTarget() const
 bool MSWindowsScreen::getClipboard(ClipboardID, IClipboard *dst) const
 {
   MSWindowsClipboard src(m_window);
-  Clipboard::copy(dst, &src);
-  return true;
+  return Clipboard::copy(dst, &src) && src.readSucceeded();
 }
 
 void MSWindowsScreen::getShape(int32_t &x, int32_t &y, int32_t &w, int32_t &h) const

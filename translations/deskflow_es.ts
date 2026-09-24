@@ -787,6 +787,10 @@ Además, verifique que puede %1 el archivo de configuración del servidor: %2</t
         <source>Connection</source>
         <translation>Conexión</translation>
     </message>
+    <message>
+        <source>Device connection (%1)</source>
+        <translation>Conexión de dispositivos (%1)</translation>
+    </message>
 </context>
 <context>
     <name>NewScreenWidget</name>
@@ -1671,10 +1675,6 @@ Al habilitar esta opción, se deshabilitará la interfaz gráfica de usuario (GU
 </context>
 <context>
     <name>deskflow::gui::DeviceOverviewWidget</name>
-    <message>
-        <source>Device connection</source>
-        <translation type="unfinished"></translation>
-    </message>
     <message>
         <source>Devices follow the configured screen positions. Move the pointer across a shared edge.</source>
         <translation type="unfinished"></translation>

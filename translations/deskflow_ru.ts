@@ -788,6 +788,10 @@ Additionally, check you are able to %1 the server config file: %2</source>
         <source>Connection</source>
         <translation>Подключение</translation>
     </message>
+    <message>
+        <source>Device connection (%1)</source>
+        <translation>Подключение устройств (%1)</translation>
+    </message>
 </context>
 <context>
     <name>NewScreenWidget</name>
@@ -1671,10 +1675,6 @@ Enabling this setting will disable the server config GUI.</source>
 </context>
 <context>
     <name>deskflow::gui::DeviceOverviewWidget</name>
-    <message>
-        <source>Device connection</source>
-        <translation type="unfinished"></translation>
-    </message>
     <message>
         <source>Devices follow the configured screen positions. Move the pointer across a shared edge.</source>
         <translation type="unfinished"></translation>

@@ -13,7 +13,9 @@
 class MSWindowsClipboardBitmapConverter : public IMSWindowsClipboardConverter
 {
 public:
-  MSWindowsClipboardBitmapConverter() = default;
+  explicit MSWindowsClipboardBitmapConverter(UINT format = CF_DIB) : m_format(format)
+  {
+  }
   ~MSWindowsClipboardBitmapConverter() override = default;
 
   // IMSWindowsClipboardConverter overrides
@@ -21,4 +23,7 @@ public:
   UINT getWin32Format() const override;
   HANDLE fromIClipboard(const std::string &) const override;
   std::string toIClipboard(HANDLE) const override;
+
+private:
+  UINT m_format;
 };

@@ -20,6 +20,10 @@ private Q_SLOTS:
   void assembleAllowsDataAtExpectedSizeAndLimit();
   void assembleRejectsDataBeyondExpectedSize();
   void assembleRejectsExpectedSizeBeyondLimit();
+  void imageSizedHeadersRespectReceiveLimit_data();
+  void imageSizedHeadersRespectReceiveLimit();
+  void assembleRecoversAfterRejectedSize();
+  void largeClipboardAssemblesAcrossChunks();
 
 private:
   Log m_log;

@@ -32,6 +32,7 @@ MSWindowsClipboard::MSWindowsClipboard(HWND window)
   // add converters, most desired first
   m_converters.push_back(new MSWindowsClipboardUTF16Converter);
   m_converters.push_back(new MSWindowsClipboardBitmapConverter);
+  m_converters.push_back(new MSWindowsClipboardBitmapConverter(CF_DIBV5));
   m_converters.push_back(new MSWindowsClipboardHTMLConverter);
   m_converters.push_back(new MSWindowsClipboardFileConverter);
 }
@@ -149,9 +150,10 @@ bool MSWindowsClipboard::open(Time time) const
   static const int kRetryDelayMs = 5;
 
   for (int i = 0; i < kMaxRetries; ++i) {
-    if (OpenClipboard(m_window)) {
+    if (m_facade->open(m_window)) {
       std::scoped_lock lock{m_mutex};
       m_time = time;
+      m_readFailed = false;
       return true;
     }
 
@@ -168,7 +170,7 @@ bool MSWindowsClipboard::open(Time time) const
 void MSWindowsClipboard::close() const
 {
   LOG_DEBUG("close clipboard");
-  CloseClipboard();
+  m_facade->close();
 }
 
 IClipboard::Time MSWindowsClipboard::getTime() const
@@ -182,7 +184,7 @@ bool MSWindowsClipboard::has(Format format) const
   for (ConverterList::const_iterator index = m_converters.begin(); index != m_converters.end(); ++index) {
     IMSWindowsClipboardConverter *converter = *index;
     if (converter->getFormat() == format) {
-      if (IsClipboardFormatAvailable(converter->getWin32Format())) {
+      if (m_facade->isFormatAvailable(converter->getWin32Format())) {
         return true;
       }
     }
@@ -192,34 +194,32 @@ bool MSWindowsClipboard::has(Format format) const
 
 std::string MSWindowsClipboard::get(Format format) const
 {
-  // find the converter for the first clipboard format we can handle
-  IMSWindowsClipboardConverter *converter = nullptr;
-  for (ConverterList::const_iterator index = m_converters.begin(); index != m_converters.end(); ++index) {
-
-    converter = *index;
-    if (converter->getFormat() == format) {
-      break;
+  bool available = false;
+  for (const auto *converter : m_converters) {
+    if (converter->getFormat() != format || !m_facade->isFormatAvailable(converter->getWin32Format())) {
+      continue;
     }
-    converter = nullptr;
+    available = true;
+    HANDLE data = m_facade->read(converter->getWin32Format());
+    if (data == nullptr) {
+      continue;
+    }
+    auto converted = converter->toIClipboard(data);
+    if (!converted.empty() || format != Format::Bitmap) {
+      return converted;
+    }
   }
 
-  // if no converter then we don't recognize any formats
-  if (converter == nullptr) {
-    LOG_WARN("no converter for format %d", format);
-    return std::string();
+  if (available) {
+    m_readFailed = true;
+    LOG_WARN("failed to read advertised clipboard format");
   }
+  return {};
+}
 
-  // get a handle to the clipboard data
-  HANDLE win32Data = GetClipboardData(converter->getWin32Format());
-  if (win32Data == nullptr) {
-    // nb: can't cause this using integ tests; this is only caused when
-    // the selected converter returns an invalid format -- which you
-    // cannot cause using public functions.
-    return std::string();
-  }
-
-  // convert
-  return converter->toIClipboard(win32Data);
+bool MSWindowsClipboard::readSucceeded() const
+{
+  return !m_readFailed;
 }
 
 void MSWindowsClipboard::clearConverters()
