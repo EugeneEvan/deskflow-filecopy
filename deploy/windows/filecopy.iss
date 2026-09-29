@@ -72,15 +72,106 @@ Source: "{#PayloadDir}\settings\Deskflow.conf"; DestDir: "{app}\settings"; Flags
 [Icons]
 Name: "{group}\{#ProductName}"; Filename: "{app}\deskflow.exe"; WorkingDir: "{app}"
 Name: "{userdesktop}\{#ProductName}"; Filename: "{app}\deskflow.exe"; WorkingDir: "{app}"; Tasks: desktopicon
-Name: "{userstartup}\{#ProductName}"; Filename: "{app}\deskflow.exe"; WorkingDir: "{app}"; Tasks: autostart
+Name: "{userstartup}\{#ProductName}"; Filename: "{app}\deskflow.exe"; WorkingDir: "{app}"; Tasks: autostart; Flags: uninsneveruninstall; Check: CanManageStartup
 
 [InstallDelete]
 ; Remove only this product's shortcut when login startup is disabled on upgrade.
-Type: files; Name: "{userstartup}\{#ProductName}.lnk"; Tasks: not autostart
+Type: files; Name: "{userstartup}\{#ProductName}.lnk"; Tasks: not autostart; Check: IsManagedStartup
 
 ; There is intentionally no [Run], service, firewall, or process-killing action.
 ; The optional startup shortcut runs in the signed-in user's desktop session.
 [Code]
+var
+  StartupSelectionInitialized: Boolean;
+
+function ManagedStartupLink(CurrentInstallationOnly: Boolean): Boolean;
+var
+  Shell, Shortcut: Variant;
+  Target, Marker: String;
+  Lines: TArrayOfString;
+begin
+  Result := False;
+  if not FileExists(ExpandConstant('{userstartup}\{#ProductName}.lnk')) then
+    Exit;
+  try
+    Shell := CreateOleObject('WScript.Shell');
+    Shortcut := Shell.CreateShortcut(ExpandConstant('{userstartup}\{#ProductName}.lnk'));
+    Target := Shortcut.TargetPath;
+    if (Shortcut.Arguments <> '') or
+       (CompareText(ExtractFileName(Target), 'deskflow.exe') <> 0) then
+      Exit;
+    if CompareText(ExpandFileName(Target), ExpandConstant('{app}\deskflow.exe')) = 0 then begin
+      Result := True;
+      Exit;
+    end;
+    if CurrentInstallationOnly then
+      Exit;
+    Marker := AddBackslash(ExtractFileDir(Target)) + 'deskflow-filecopy.package';
+    if LoadStringsFromFile(Marker, Lines) and (GetArrayLength(Lines) > 0) then
+      Result := Trim(Lines[0]) = 'Deskflow FileCopy';
+  except
+    Log('Could not identify the existing startup shortcut; leaving it unchanged.');
+  end;
+end;
+
+function IsManagedStartup: Boolean;
+begin
+  Result := ManagedStartupLink(False);
+end;
+
+function CanManageStartup: Boolean;
+begin
+  Result := not FileExists(ExpandConstant('{userstartup}\{#ProductName}.lnk')) or IsManagedStartup;
+end;
+
+function StartupTaskOverridden: Boolean;
+var
+  I: Integer;
+  Arg: String;
+begin
+  Result := False;
+  for I := 1 to ParamCount do begin
+    Arg := Lowercase(ParamStr(I));
+    { Explicit task lists and saved installer settings take precedence. }
+    if (Pos('/tasks=', Arg) = 1) or (Pos('/loadinf=', Arg) = 1) or
+       ((Pos('/mergetasks=', Arg) = 1) and (Pos('autostart', Arg) > 0)) then begin
+      Result := True;
+      Exit;
+    end;
+  end;
+end;
+
+procedure InitializeStartupSelection;
+begin
+  if StartupSelectionInitialized then
+    Exit;
+  StartupSelectionInitialized := True;
+  { The GUI can change the shortcut after installation. Read its actual state
+    instead of restoring the installer's stale task selection. }
+  if not StartupTaskOverridden then begin
+    if IsManagedStartup then
+      WizardSelectTasks('autostart')
+    else
+      WizardSelectTasks('!autostart');
+  end;
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  { Task defaults are populated after InitializeWizard. Apply this only once,
+    before the tasks page is used, so a later user choice is not overwritten. }
+  if CurPageID = wpSelectTasks then
+    InitializeStartupSelection;
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  { The GUI may have created the link after setup. Do not remove a shortcut
+    that now belongs to another installation. }
+  if (CurUninstallStep = usUninstall) and ManagedStartupLink(True) then
+    DeleteFile(ExpandConstant('{userstartup}\{#ProductName}.lnk'));
+end;
+
 function NextButtonClick(CurPageID: Integer): Boolean;
 begin
   Result := True;
@@ -95,9 +186,13 @@ end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
+  { Silent installs may never display the tasks page. }
+  InitializeStartupSelection;
   Result := '';
   { Repeat the check for silent installation, which can skip wpSelectDir. }
   if FileExists(ExpandConstant('{app}\deskflow.exe')) and
      not FileExists(ExpandConstant('{app}\deskflow-filecopy.package')) then
     Result := 'Refusing to overwrite a different Deskflow installation. Choose a separate directory.';
+  if (Result = '') and WizardIsTaskSelected('autostart') and not CanManageStartup then
+    Result := 'The startup shortcut belongs to another application or cannot be read. Please resolve it before enabling login startup.';
 end;

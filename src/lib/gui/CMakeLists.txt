@@ -35,6 +35,8 @@ add_library(${target} STATIC
   TlsUtility.h
   VersionChecker.cpp
   VersionChecker.h
+  WindowsLoginStartup.cpp
+  WindowsLoginStartup.h
   config/Screen.cpp
   config/Screen.h
   config/ScreenConfig.cpp
@@ -135,3 +137,7 @@ target_link_libraries(${target}
     net
     Qt6::Widgets
 )
+
+if(WIN32)
+  target_link_libraries(${target} PRIVATE ole32 shell32)
+endif()

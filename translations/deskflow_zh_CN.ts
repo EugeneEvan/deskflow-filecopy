@@ -55,6 +55,26 @@ p, li { white-space: pre-wrap; }
         <source>About Deskflow FileCopy</source>
         <translation>关于 Deskflow FileCopy</translation>
     </message>
+    <message>
+        <source>Windows file copy, based on Deskflow</source>
+        <translation>基于 Deskflow 的 Windows 文件复制</translation>
+    </message>
+    <message>
+        <source>Independent derivative maintained by EugeneEvan</source>
+        <translation>由 EugeneEvan 独立维护的衍生版本</translation>
+    </message>
+    <message>
+        <source>System: %1</source>
+        <translation>系统：%1</translation>
+    </message>
+    <message>
+        <source>Portable Mode</source>
+        <translation>便携模式</translation>
+    </message>
+    <message>
+        <source>Session: %1 (%2)</source>
+        <translation>会话：%1（%2）</translation>
+    </message>
 </context>
 <context>
     <name>ActionDialog</name>
@@ -143,39 +163,39 @@ p, li { white-space: pre-wrap; }
     <name>ClientConfigDialog</name>
     <message>
         <source>Client Configuration</source>
-        <translation type="unfinished">客户端配置</translation>
+        <translation>客户端配置</translation>
     </message>
     <message>
         <source>Use server&apos;s keyboard language on this computer</source>
-        <translation type="unfinished">在此计算机上使用服务器的键盘语言</translation>
+        <translation>在此计算机上使用服务器的键盘语言</translation>
     </message>
     <message>
         <source>Scroll Modifiers</source>
-        <translation type="unfinished">滚动修饰符</translation>
+        <translation>滚动修饰键</translation>
     </message>
     <message>
         <source>Invert</source>
-        <translation type="unfinished">倒置</translation>
+        <translation>反转</translation>
     </message>
     <message>
         <source>Horizontal Scroll</source>
-        <translation type="unfinished">水平滚动</translation>
+        <translation>水平滚动</translation>
     </message>
     <message>
         <source>Vertical Scroll</source>
-        <translation type="unfinished">垂直滚动</translation>
+        <translation>垂直滚动</translation>
     </message>
     <message>
         <source>Scale</source>
-        <translation type="unfinished">规模</translation>
+        <translation>缩放倍率</translation>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Allow the client to slow the rate it attempts to reconnect to the server when connections attempts are failing. The delay between connection attempts will  start at 1 second intervals and can be a maxium of 5 minutes between connection attempts.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;允许客户端在连接尝试失败时，降低其重连服务器的频率。连接尝试之间的间隔将从 1 秒开始，最长可达 5 分钟。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;允许客户端在连接尝试失败时，降低其重连服务器的频率。连接尝试之间的间隔将从 1 秒开始，最长可达 5 分钟。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <source>Use dynamic reconnection time based on connection attempts</source>
-        <translation type="unfinished">根据连接尝试次数，采用动态重连时间</translation>
+        <translation>根据连接尝试次数，采用动态重连时间</translation>
     </message>
 </context>
 <context>
@@ -341,11 +361,11 @@ Do you want to connect to the server?
     <name>HelpDialog</name>
     <message>
         <source>%1 Help</source>
-        <translation type="unfinished">%1 帮助</translation>
+        <translation>%1 帮助</translation>
     </message>
     <message>
         <source>Close</source>
-        <translation type="unfinished">关闭</translation>
+        <translation>关闭</translation>
     </message>
 </context>
 <context>
@@ -382,27 +402,27 @@ Do you want to connect to the server?
     <name>LogLevel</name>
     <message>
         <source>Fatal</source>
-        <translation type="unfinished">致命</translation>
+        <translation>致命</translation>
     </message>
     <message>
         <source>Error</source>
-        <translation type="unfinished">错误</translation>
+        <translation>错误</translation>
     </message>
     <message>
         <source>Warning</source>
-        <translation type="unfinished">警告</translation>
+        <translation>警告</translation>
     </message>
     <message>
         <source>Info</source>
-        <translation type="unfinished">信息</translation>
+        <translation>信息</translation>
     </message>
     <message>
         <source>Debug</source>
-        <translation type="unfinished">调试</translation>
+        <translation>调试</translation>
     </message>
     <message>
         <source>Verbose</source>
-        <translation type="unfinished">冗长的</translation>
+        <translation>详细</translation>
     </message>
 </context>
 <context>
@@ -991,7 +1011,7 @@ Additionally, check you are able to %1 the server config file: %2</source>
         <source>&lt;p&gt;Please &lt;a href=&quot;%1&quot;&gt;report a bug&lt;/a&gt; and copy/paste the following error:&lt;/p&gt;&lt;pre&gt;v%2
 %3
 %4&lt;/pre&gt;</source>
-        <translation>&lt;p&gt;请 &lt;a href=&quot;%1&quot;&gt;报告 Bug&lt;/a&gt; 并复制/粘贴以下错误：&lt;/p&gt;&lt;pre&gt;v%2
+        <translation>&lt;p&gt;请&lt;a href=&quot;%1&quot;&gt;报告错误&lt;/a&gt;并复制粘贴以下错误信息：&lt;/p&gt;&lt;pre&gt;v%2
 %3
 %4&lt;/pre&gt;</translation>
     </message>
@@ -1005,7 +1025,7 @@ Additionally, check you are able to %1 the server config file: %2</source>
     </message>
     <message>
         <source>&lt;p&gt;Great, the %1 server is now running.&lt;/p&gt;&lt;p&gt;Now you can connect your client computers to this server. You should see a prompt here on the server when a new client tries to connect.&lt;/p&gt;</source>
-        <translation type="unfinished">&lt;p&gt;太好了，服务器 %1 已在运行。&lt;/p&gt;&lt;p&gt;现在您可以将客户端计算机连接到此服务器。当新客户端尝试连接时，您会在服务器端看到提示。&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;太好了，服务器 %1 已在运行。&lt;/p&gt;&lt;p&gt;现在您可以将客户端计算机连接到此服务器。当新客户端尝试连接时，您会在服务器端看到提示。&lt;/p&gt;</translation>
     </message>
     <message>
         <source>&lt;p&gt;%1 is now connected!&lt;/p&gt;</source>
@@ -1037,7 +1057,7 @@ Additionally, check you are able to %1 the server config file: %2</source>
     </message>
     <message>
         <source>A new client called &apos;%1&apos; has been accepted. You&apos;ll need to add it to your server&apos;s screen layout.</source>
-        <translation type="unfinished">已接受名为“%1”的新客户端。您需要将其添加到服务器的屏幕布局中。</translation>
+        <translation>已接受名为“%1”的新客户端。您需要将其添加到服务器的屏幕布局中。</translation>
     </message>
     <message>
         <source>Ignore</source>
@@ -1061,7 +1081,7 @@ Additionally, check you are able to %1 the server config file: %2</source>
     </message>
     <message>
         <source>&lt;p&gt;Would you like to check for updates when %1 starts?&lt;/p&gt;&lt;p&gt;Checking for updates requires an Internet connection.&lt;/p&gt;&lt;p&gt;URL: &lt;pre&gt;%2&lt;/pre&gt;&lt;/p&gt;</source>
-        <translation>&lt;p&gt;您希望在 %1 启动时检查更新吗？&lt;/p&gt;&lt;p&gt;检查更新需要互联网连接。&lt;/p&gt;&lt;p&gt;URL: &lt;pre&gt;%2&lt;/pre&gt;&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;是否在 %1 启动时检查更新？&lt;/p&gt;&lt;p&gt;检查更新需要互联网连接。&lt;/p&gt;&lt;p&gt;网址：&lt;pre&gt;%2&lt;/pre&gt;&lt;/p&gt;</translation>
     </message>
     <message>
         <source>Background service offline</source>
@@ -1077,26 +1097,26 @@ Additionally, check you are able to %1 the server config file: %2</source>
     </message>
     <message>
         <source>&lt;p&gt;There was a problem finding the %1 background service (daemon).&lt;/p&gt;&lt;p&gt;The background service makes %1 work with UAC prompts and the login screen.&lt;/p&gt;&lt;p&gt;If don&apos;t want to use the background service and intentionally stopped it, you can prevent it&apos;s use by disabling this feature.&lt;/p&gt;&lt;p&gt;If you did not stop the background service intentionally, there may be a problem with it. Please retry or try restarting the %1 service from the Windows services program.&lt;/p&gt;</source>
-        <translation type="unfinished">&lt;p&gt;查找 %1 后台服务（守护进程）时出现问题。&lt;/p&gt;&lt;p&gt;%1 需后台服务来与 UAC 提示和登录屏幕配合工作。&lt;/p&gt;&lt;p&gt;如果您不想使用后台服务并已将其停止，可以通过禁用此功能来阻止使用它。&lt;/p&gt;&lt;p&gt;如果您并非有意停止后台服务，则可能存在问题。请重试，或尝试从 Windows 服务程序中重启 %1 服务。&lt;/p&gt;</translation>
+        <translation>&lt;p&gt;查找 %1 后台服务（守护进程）时出现问题。&lt;/p&gt;&lt;p&gt;%1 需后台服务来与 UAC 提示和登录屏幕配合工作。&lt;/p&gt;&lt;p&gt;如果您不想使用后台服务并已将其停止，可以通过禁用此功能来阻止使用它。&lt;/p&gt;&lt;p&gt;如果您并非有意停止后台服务，则可能存在问题。请重试，或尝试从 Windows 服务程序中重启 %1 服务。&lt;/p&gt;</translation>
     </message>
     <message>
         <source>failed to read key from certificate file: %1</source>
         <extracomment>%1 will be replaced by the certificate path</extracomment>
-        <translation type="unfinished">无法从证书文件中读取密钥：%1</translation>
+        <translation>无法从证书文件中读取密钥：%1</translation>
     </message>
     <message>
         <source>failed to parse certificate file: %1</source>
         <extracomment>%1 will be replaced by the certificate path</extracomment>
-        <translation type="unfinished">解析证书文件失败：%1</translation>
+        <translation>解析证书文件失败：%1</translation>
     </message>
     <message>
         <source>key detected is the incorrect size</source>
-        <translation type="unfinished">检测到的密钥大小不正确</translation>
+        <translation>检测到的密钥大小不正确</translation>
     </message>
     <message>
         <source>failed to read RSA key from certificate file: %1</source>
         <extracomment>%1 will be replaced by the certificate path</extracomment>
-        <translation type="unfinished">无法从证书文件中读取 RSA 密钥：%1</translation>
+        <translation>无法从证书文件中读取 RSA 密钥：%1</translation>
     </message>
     <message>
         <source>%1 is already running</source>
@@ -1207,7 +1227,7 @@ Additionally, check you are able to %1 the server config file: %2</source>
     </message>
     <message>
         <source>XTest for Xinerama</source>
-        <translation type="unfinished">用于 Xinerama 的 XTest</translation>
+        <translation>用于 Xinerama 的 XTest</translation>
     </message>
     <message>
         <source>Aliases</source>
@@ -1239,11 +1259,11 @@ Additionally, check you are able to %1 the server config file: %2</source>
     </message>
     <message>
         <source>Alt Gr</source>
-        <translation type="unfinished"></translation>
+        <translation>Alt Gr</translation>
     </message>
     <message>
         <source>Alt &amp;Gr</source>
-        <translation type="unfinished"></translation>
+        <translation>Alt &amp;Gr</translation>
     </message>
 </context>
 <context>
@@ -1257,19 +1277,19 @@ Additionally, check you are able to %1 the server config file: %2</source>
     <name>SearchWidget</name>
     <message>
         <source>Search</source>
-        <translation type="unfinished">搜索</translation>
+        <translation>搜索</translation>
     </message>
     <message>
         <source>Find next</source>
-        <translation type="unfinished">查找下一个</translation>
+        <translation>查找下一个</translation>
     </message>
     <message>
         <source>Find previous</source>
-        <translation type="unfinished">查找上一个</translation>
+        <translation>查找上一个</translation>
     </message>
     <message>
         <source>Find...</source>
-        <translation type="unfinished">寻找...</translation>
+        <translation>查找...</translation>
     </message>
 </context>
 <context>
@@ -1368,7 +1388,7 @@ Additionally, check you are able to %1 the server config file: %2</source>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enables the network heartbeat to ping clients every &lt;span style=&quot; font-style:italic;&quot;&gt;n&lt;/span&gt; seconds. This may help to diagnose network problems by retrying the connection if the client becomes unresponsive.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;启用网络心跳，每 &lt;span style=&quot; font-style:italic;&quot;&gt;n&lt;/span&gt; 秒 ping 一次客户端。如果客户端无响应，通过重试连接可能有助于诊断网络问题。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;启用网络心跳，每 &lt;span style=&quot; font-style:italic;&quot;&gt;n&lt;/span&gt; 秒检测一次客户端。如果客户端无响应，重试连接有助于诊断网络问题。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <source>&amp;Check clients every</source>
@@ -1404,7 +1424,7 @@ Additionally, check you are able to %1 the server config file: %2</source>
 Enabling this setting will disable the server config GUI.</source>
         <translation>使用服务器配置文件来创建简单的网格布局编辑器无法实现的复杂计算机布局。
 
-启用此设置将禁用服务器配置 GUI。</translation>
+启用此设置后，将无法使用图形界面配置服务器。</translation>
     </message>
     <message>
         <source>Use a server config file</source>
@@ -1425,7 +1445,15 @@ Enabling this setting will disable the server config GUI.</source>
     </message>
     <message>
         <source>Enable lock to computer at startup</source>
-        <translation type="unfinished">启动时启用锁定到计算机</translation>
+        <translation>启动时启用锁定到计算机</translation>
+    </message>
+    <message>
+        <source>Filename invalid</source>
+        <translation>文件名无效</translation>
+    </message>
+    <message>
+        <source>Please select a valid configuration file.</source>
+        <translation>请选择有效的配置文件。</translation>
     </message>
 </context>
 <context>
@@ -1535,8 +1563,20 @@ Enabling this setting will disable the server config GUI.</source>
         <translation>选择要使用的 TLS 证书...</translation>
     </message>
     <message>
+        <source>Cert (*.pem)</source>
+        <translation>证书 (*.pem)</translation>
+    </message>
+    <message>
         <source>Save log file to...</source>
         <translation>保存日志文件到...</translation>
+    </message>
+    <message>
+        <source>Logs (*.log *.txt)</source>
+        <translation>日志文件 (*.log *.txt)</translation>
+    </message>
+    <message>
+        <source>Key length: %1 bits</source>
+        <translation>密钥长度：%1 位</translation>
     </message>
     <message>
         <source>%1 Clear Settings</source>
@@ -1569,6 +1609,10 @@ Enabling this setting will disable the server config GUI.</source>
     <message>
         <source>Verbose debug output</source>
         <translation>详细调试输出</translation>
+    </message>
+    <message>
+        <source>Login startup</source>
+        <translation>登录启动</translation>
     </message>
     <message>
         <source>File copy is unavailable: enable TLS encryption on both computers.</source>
@@ -1636,7 +1680,7 @@ Enabling this setting will disable the server config GUI.</source>
     </message>
     <message>
         <source>Using a log level higher than Info may affect performance.</source>
-        <translation>使用比 Info 更详细的日志级别可能影响性能。</translation>
+        <translation>使用比“信息”更详细的日志级别可能影响性能。</translation>
     </message>
     <message>
         <source>Remove all settings</source>
@@ -1702,32 +1746,36 @@ Enabling this setting will disable the server config GUI.</source>
         <source>Screen commands</source>
         <translation>屏幕切换命令</translation>
     </message>
+    <message>
+        <source>Start when I sign in</source>
+        <translation>开机自启（登录后启动）</translation>
+    </message>
 </context>
 <context>
     <name>SettingsDialogButtonBox</name>
     <message>
         <source>Settings are read only</source>
-        <translation type="unfinished">设置仅为只读</translation>
+        <translation>设置仅为只读</translation>
     </message>
     <message>
         <source>%1 is not writable</source>
-        <translation type="unfinished">%1 不可写入</translation>
+        <translation>%1 不可写入</translation>
     </message>
     <message>
         <source>Close and save changes</source>
-        <translation type="unfinished">关闭并保存更改</translation>
+        <translation>关闭并保存更改</translation>
     </message>
     <message>
         <source>Close and forget changes</source>
-        <translation type="unfinished">关闭并放弃修改</translation>
+        <translation>关闭并放弃修改</translation>
     </message>
     <message>
         <source>Reset to stored values</source>
-        <translation type="unfinished">重置为存储值</translation>
+        <translation>重置为存储值</translation>
     </message>
     <message>
         <source>Reset to default values</source>
-        <translation type="unfinished">重置为默认值</translation>
+        <translation>重置为默认值</translation>
     </message>
 </context>
 <context>
@@ -1791,7 +1839,7 @@ Enabling this setting will disable the server config GUI.</source>
     </message>
     <message>
         <source>%1 is waiting %2 seconds before the next retry</source>
-        <translation type="unfinished">%1 正在等待 %2 秒，然后进行下一次重试</translation>
+        <translation>%1 正在等待 %2 秒，然后进行下一次重试</translation>
     </message>
     <message>
         <source>%1 Encryption Enabled</source>
@@ -1800,6 +1848,45 @@ Enabling this setting will disable the server config GUI.</source>
     <message>
         <source>Encryption Disabled</source>
         <translation>加密已禁用</translation>
+    </message>
+</context>
+<context>
+    <name>WindowsLoginStartup</name>
+    <message>
+        <source>Could not initialize Windows shortcuts.</source>
+        <translation>无法初始化 Windows 快捷方式。</translation>
+    </message>
+    <message>
+        <source>Could not open the login startup shortcut.</source>
+        <translation>无法打开登录启动快捷方式。</translation>
+    </message>
+    <message>
+        <source>The login startup shortcut cannot be read.</source>
+        <translation>无法读取登录启动快捷方式。</translation>
+    </message>
+    <message>
+        <source>The login startup shortcut belongs to another program.</source>
+        <translation>登录启动快捷方式属于其他程序。</translation>
+    </message>
+    <message>
+        <source>Could not create the login startup shortcut.</source>
+        <translation>无法创建登录启动快捷方式。</translation>
+    </message>
+    <message>
+        <source>Could not write the login startup shortcut.</source>
+        <translation>无法写入登录启动快捷方式。</translation>
+    </message>
+    <message>
+        <source>Could not locate the Windows login startup folder.</source>
+        <translation>找不到 Windows 登录启动文件夹。</translation>
+    </message>
+    <message>
+        <source>Could not remove the login startup shortcut.</source>
+        <translation>无法移除登录启动快捷方式。</translation>
+    </message>
+    <message>
+        <source>Login startup is only available on Windows.</source>
+        <translation>登录启动功能仅适用于 Windows。</translation>
     </message>
 </context>
 <context>

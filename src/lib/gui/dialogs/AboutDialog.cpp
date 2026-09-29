@@ -14,6 +14,7 @@
 #include "common/VersionInfo.h"
 
 #include <QClipboard>
+#include <QEvent>
 
 AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent), ui{std::make_unique<Ui::AboutDialog>()}
 {
@@ -30,12 +31,7 @@ AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent), ui{std::make_unique
   connect(ui->btnCopyVersion, &QPushButton::clicked, this, &AboutDialog::copyVersionText);
 
   ui->lblVersion->setText(kDisplayVersion);
-  setWindowTitle(tr("About Deskflow FileCopy"));
-  ui->lblDescription->setText(QStringLiteral(
-      "Deskflow FileCopy 0.3.2\n"
-      "Windows file copy, based on Deskflow\n"
-      "Independent derivative maintained by EugeneEvan"
-  ));
+  updateText();
   ui->lblCopyright->setText(kCopyright);
 
   // Use non-breaking space in each awesome dev name so names are not split across lines.
@@ -52,16 +48,37 @@ AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent), ui{std::make_unique
   connect(ui->btnOk, &QPushButton::clicked, this, &AboutDialog::close);
 }
 
+void AboutDialog::changeEvent(QEvent *event)
+{
+  QDialog::changeEvent(event);
+  if (event->type() == QEvent::LanguageChange) {
+    ui->retranslateUi(this);
+    updateText();
+  }
+}
+
+void AboutDialog::updateText()
+{
+  setWindowTitle(tr("About Deskflow FileCopy"));
+  ui->lblDescription->setText(
+      QStringLiteral("Deskflow FileCopy 0.3.5\n%1\n%2")
+          .arg(tr("Windows file copy, based on Deskflow"), tr("Independent derivative maintained by EugeneEvan"))
+  );
+}
+
 void AboutDialog::copyVersionText() const
 {
-  QString infoString = QStringLiteral("Deskflow FileCopy 0.3.2\n%1: %2 (%3)\nQt: %4\nSystem: %5")
-                           .arg(kAppName, kVersion, kVersionGitSha, qVersion(), QSysInfo::prettyProductName());
+  QString infoString =
+      QStringLiteral("Deskflow FileCopy 0.3.5\n%1: %2 (%3)\nQt: %4\n%5")
+          .arg(kAppName, kVersion, kVersionGitSha, qVersion(), tr("System: %1").arg(QSysInfo::prettyProductName()));
   if (Settings::isPortableMode()) {
-    infoString.append(QStringLiteral("\nPortable Mode"));
+    infoString.append(QStringLiteral("\n") + tr("Portable Mode"));
   }
 #ifdef Q_OS_LINUX
-  infoString.append(QStringLiteral("\nSession: %1 (%2)")
-                        .arg(qEnvironmentVariable("XDG_CURRENT_DESKTOP"), qEnvironmentVariable("XDG_SESSION_TYPE")));
+  infoString.append(
+      QStringLiteral("\n") +
+      tr("Session: %1 (%2)").arg(qEnvironmentVariable("XDG_CURRENT_DESKTOP"), qEnvironmentVariable("XDG_SESSION_TYPE"))
+  );
 #endif
   QGuiApplication::clipboard()->setText(infoString);
 }

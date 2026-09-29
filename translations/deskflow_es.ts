@@ -55,6 +55,26 @@ p, li { white-space: pre-wrap; }
         <source>About Deskflow FileCopy</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Windows file copy, based on Deskflow</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Independent derivative maintained by EugeneEvan</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>System: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Portable Mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Session: %1 (%2)</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>ActionDialog</name>
@@ -1254,6 +1274,14 @@ Al habilitar esta opción, se deshabilitará la interfaz gráfica de usuario (GU
         <translation type="unfinished">Ruta del archivo de configuración</translation>
     </message>
     <message>
+        <source>Filename invalid</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please select a valid configuration file.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>%1 Configurations (*.conf);;All files (*.*)</source>
         <extracomment>%1 is replaced with the application names (*.conf) and (*.*) should not be translated</extracomment>
         <translation type="unfinished">%1 Configuraciones (*.conf);;Todos los archivos (*.*)</translation>
@@ -1342,6 +1370,10 @@ Al habilitar esta opción, se deshabilitará la interfaz gráfica de usuario (GU
         <translation type="unfinished">Ejecutar siempre como sistema (funcionar en la pantalla de inicio de sesión y UAC)</translation>
     </message>
     <message>
+        <source>Logs (*.log *.txt)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>%1 Clear Settings</source>
         <translation type="unfinished">%1 Borrar configuración</translation>
     </message>
@@ -1374,11 +1406,19 @@ Al habilitar esta opción, se deshabilitará la interfaz gráfica de usuario (GU
         <translation type="unfinished">Salida de depuración detallada</translation>
     </message>
     <message>
+        <source>Login startup</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>File copy is unavailable: enable TLS encryption on both computers.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <source>File copy is unavailable: enable clipboard sharing in the server configuration.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Key length: %1 bits</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1404,6 +1444,10 @@ Al habilitar esta opción, se deshabilitará la interfaz gráfica de usuario (GU
     <message>
         <source>Select a TLS certificate to use...</source>
         <translation type="unfinished">Seleccione un certificado TLS para utilizar...</translation>
+    </message>
+    <message>
+        <source>Cert (*.pem)</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Save log file to...</source>
@@ -1541,6 +1585,10 @@ Al habilitar esta opción, se deshabilitará la interfaz gráfica de usuario (GU
         <source>Screen commands</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Start when I sign in</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>SettingsDialogButtonBox</name>
@@ -1640,6 +1688,45 @@ Al habilitar esta opción, se deshabilitará la interfaz gráfica de usuario (GU
     <message>
         <source>Encryption Disabled</source>
         <translation type="unfinished">Cifrado deshabilitado</translation>
+    </message>
+</context>
+<context>
+    <name>WindowsLoginStartup</name>
+    <message>
+        <source>Could not initialize Windows shortcuts.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not open the login startup shortcut.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The login startup shortcut cannot be read.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The login startup shortcut belongs to another program.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not create the login startup shortcut.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not write the login startup shortcut.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not locate the Windows login startup folder.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not remove the login startup shortcut.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Login startup is only available on Windows.</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>

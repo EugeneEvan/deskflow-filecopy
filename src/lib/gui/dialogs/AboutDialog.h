@@ -10,6 +10,8 @@
 
 #include <QDialog>
 
+class QEvent;
+
 namespace Ui {
 class AboutDialog;
 }
@@ -21,8 +23,12 @@ public:
   explicit AboutDialog(QWidget *parent = nullptr);
   ~AboutDialog() override;
 
+protected:
+  void changeEvent(QEvent *event) override;
+
 private:
   std::unique_ptr<Ui::AboutDialog> ui;
+  void updateText();
   void copyVersionText() const;
 
   inline static const auto s_awesomeDevs = QStringList{

@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "gui/WindowsLoginStartup.h"
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -25,8 +26,14 @@ private Q_SLOTS:
   void saveLanguageAppliesTranslation();
   void cacheEditsAreStagedUntilSave_data();
   void cacheEditsAreStagedUntilSave();
+  void loginStartupOptionAppearsOnWindows();
+  void loginStartupShortcutUsesIsolatedFolder();
+  void loginStartupRejectsForeignShortcut();
+  void loginStartupEditsAreStagedUntilSave();
+  void loginStartupRepairsOldInstallation();
 
 private:
+  deskflow::gui::WindowsLoginStartup isolatedStartup() const;
   QTemporaryDir m_temp;
   QString m_seedFile;
   QByteArray m_previousConfigHome;

@@ -63,7 +63,8 @@ void ServerConfigDialog::save()
   if (ui->groupExternalConfig->isChecked() && !QFile::exists(ui->lineConfigFile->text())) {
 
     auto selectedButton = QMessageBox::warning(
-        this, "Filename invalid", "Please select a valid configuration file.", QMessageBox::Ok | QMessageBox::Ignore
+        this, tr("Filename invalid"), tr("Please select a valid configuration file."),
+        QMessageBox::Ok | QMessageBox::Ignore
     );
 
     if (selectedButton != QMessageBox::Ok || !browseConfigFile()) {

@@ -8,6 +8,7 @@
 #include "common/I18N.h"
 #include "common/PlatformInfo.h"
 #include "common/Settings.h"
+#include "gui/WindowsLoginStartup.h"
 #include "gui/dialogs/FileTransferCacheDialog.h"
 #include "gui/dialogs/SettingsDialog.h"
 
@@ -25,9 +26,18 @@
 #include <QTabWidget>
 #include <QTimer>
 
+deskflow::gui::WindowsLoginStartup SettingsDialogTests::isolatedStartup() const
+{
+  return {
+      m_temp.filePath(QStringLiteral("settings-dialog-startup")),
+      m_temp.filePath(QStringLiteral("settings-dialog-app/deskflow.exe"))
+  };
+}
+
 void SettingsDialogTests::initTestCase()
 {
   QVERIFY(m_temp.isValid());
+  QVERIFY(QDir().mkpath(m_temp.filePath(QStringLiteral("settings-dialog-startup"))));
   // Settings inspects a portable file before setSettingsFile can redirect it. The test executable
   // has its own output directory; never overwrite a pre-existing configuration there.
   m_seedFile = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("settings/Deskflow.conf"));
@@ -76,7 +86,7 @@ void SettingsDialogTests::cleanupTestCase()
 void SettingsDialogTests::transferShortcutSelectsSupportedPage()
 {
   const ServerConfig config;
-  SettingsDialog dialog(nullptr, config);
+  SettingsDialog dialog(nullptr, config, isolatedStartup());
   auto *tabs = dialog.findChild<QTabWidget *>(QStringLiteral("tabWidget"));
   QVERIFY(tabs);
   QCOMPARE(tabs->count(), 4);
@@ -98,7 +108,7 @@ void SettingsDialogTests::serviceTogglePreservesStagedTls()
   const auto storedCertificate = Settings::value(Settings::Security::Certificate).toString();
   const auto stagedCertificate = m_temp.filePath(QStringLiteral("staged.pem"));
   const ServerConfig config;
-  SettingsDialog dialog(nullptr, config);
+  SettingsDialog dialog(nullptr, config, isolatedStartup());
   auto *service = dialog.findChild<QGroupBox *>(QStringLiteral("groupService"));
   auto *tls = dialog.findChild<QGroupBox *>(QStringLiteral("groupSecurity"));
   auto *keySize = dialog.findChild<QComboBox *>(QStringLiteral("comboTlsKeyLength"));
@@ -125,7 +135,7 @@ void SettingsDialogTests::restoreDefaultsKeepsWindowChoicesIndependent()
   Settings::setValue(Settings::Gui::CloseToTray, !defaultClose);
   Settings::setValue(Settings::Security::KeySize, 4096);
   const ServerConfig config;
-  SettingsDialog dialog(nullptr, config);
+  SettingsDialog dialog(nullptr, config, isolatedStartup());
   auto *buttons = dialog.findChild<QDialogButtonBox *>();
   auto *autoHide = dialog.findChild<QRadioButton *>(QStringLiteral("rbAutoHide"));
   auto *closeToTray = dialog.findChild<QRadioButton *>(QStringLiteral("rbCloseToTray"));
@@ -155,7 +165,7 @@ void SettingsDialogTests::resetRestoresStoredPreferences()
   Settings::setValue(Settings::Security::TlsEnabled, true);
   Settings::setValue(Settings::Gui::Autohide, true);
   const ServerConfig config;
-  SettingsDialog dialog(nullptr, config);
+  SettingsDialog dialog(nullptr, config, isolatedStartup());
   auto *buttons = dialog.findChild<QDialogButtonBox *>();
   auto *autoHide = dialog.findChild<QRadioButton *>(QStringLiteral("rbAutoHide"));
   auto *show = dialog.findChild<QRadioButton *>(QStringLiteral("rbShowOnStart"));
@@ -180,7 +190,7 @@ void SettingsDialogTests::cancelDoesNotSaveEdits()
   Settings::setValue(Settings::Gui::Autohide, false);
   const auto originalLanguage = Settings::value(Settings::Core::Language).toString();
   const ServerConfig config;
-  SettingsDialog dialog(nullptr, config);
+  SettingsDialog dialog(nullptr, config, isolatedStartup());
   auto *buttons = dialog.findChild<QDialogButtonBox *>();
   auto *autoHide = dialog.findChild<QRadioButton *>(QStringLiteral("rbAutoHide"));
   auto *keySize = dialog.findChild<QComboBox *>(QStringLiteral("comboTlsKeyLength"));
@@ -209,7 +219,7 @@ void SettingsDialogTests::saveAppliesStagedPreferences()
   Settings::setValue(Settings::Security::KeySize, 2048);
   Settings::setValue(Settings::Gui::Autohide, false);
   const ServerConfig config;
-  SettingsDialog dialog(nullptr, config);
+  SettingsDialog dialog(nullptr, config, isolatedStartup());
   auto *buttons = dialog.findChild<QDialogButtonBox *>();
   auto *autoHide = dialog.findChild<QRadioButton *>(QStringLiteral("rbAutoHide"));
   auto *keySize = dialog.findChild<QComboBox *>(QStringLiteral("comboTlsKeyLength"));
@@ -226,7 +236,7 @@ void SettingsDialogTests::saveAppliesStagedPreferences()
 void SettingsDialogTests::saveLanguageAppliesTranslation()
 {
   const ServerConfig config;
-  SettingsDialog dialog(nullptr, config);
+  SettingsDialog dialog(nullptr, config, isolatedStartup());
   auto *buttons = dialog.findChild<QDialogButtonBox *>();
   auto *language = dialog.findChild<QComboBox *>(QStringLiteral("comboLanguage"));
   QVERIFY(buttons && language);
@@ -263,7 +273,7 @@ void SettingsDialogTests::cacheEditsAreStagedUntilSave()
   const auto originalLimit = Settings::value(Settings::Core::FileTransferCacheLimitGiB).toInt();
   const auto chosenPath = m_temp.filePath(QStringLiteral("chosen-cache"));
   const ServerConfig config;
-  SettingsDialog dialog(nullptr, config);
+  SettingsDialog dialog(nullptr, config, isolatedStartup());
   auto *cacheButton = dialog.findChild<QPushButton *>(QStringLiteral("btnFileCache"));
   auto *buttons = dialog.findChild<QDialogButtonBox *>();
   QVERIFY(cacheButton && buttons);
@@ -302,6 +312,161 @@ void SettingsDialogTests::cacheEditsAreStagedUntilSave()
   buttons->button(save ? QDialogButtonBox::Save : QDialogButtonBox::Cancel)->click();
   QCOMPARE(Settings::value(Settings::Core::FileTransferCachePath).toString(), save ? chosenPath : originalPath);
   QCOMPARE(Settings::value(Settings::Core::FileTransferCacheLimitGiB).toInt(), save ? 37 : originalLimit);
+}
+
+void SettingsDialogTests::loginStartupOptionAppearsOnWindows()
+{
+  const ServerConfig config;
+  SettingsDialog dialog(nullptr, config, isolatedStartup());
+  auto *startup = dialog.findChild<QCheckBox *>(QStringLiteral("cbStartAtLogin"));
+  QVERIFY(startup);
+  QCOMPARE(!startup->isHidden(), deskflow::platform::isWindows());
+}
+
+void SettingsDialogTests::loginStartupShortcutUsesIsolatedFolder()
+{
+  if (!deskflow::platform::isWindows())
+    QSKIP("Windows shortcuts are only available on Windows.");
+  const auto folder = m_temp.filePath(QStringLiteral("isolated-startup"));
+  const auto appDir = m_temp.filePath(QStringLiteral("portable-app"));
+  QVERIFY(QDir().mkpath(folder));
+  QVERIFY(QDir().mkpath(appDir));
+  const auto executable = QDir(appDir).filePath(QStringLiteral("deskflow.exe"));
+  QFile binary(executable);
+  QVERIFY(binary.open(QIODevice::WriteOnly));
+  binary.close();
+  const deskflow::gui::WindowsLoginStartup startup(folder, executable);
+  QCOMPARE(startup.state(), deskflow::gui::WindowsLoginStartup::State::Disabled);
+  QString error;
+  QVERIFY2(startup.setEnabled(true, &error), qPrintable(error));
+  QVERIFY2(startup.state(&error) == deskflow::gui::WindowsLoginStartup::State::Enabled, qPrintable(error));
+  QVERIFY(QFileInfo(QDir(folder).filePath(QStringLiteral("Deskflow FileCopy.lnk"))).isFile());
+  QVERIFY(QFile::remove(executable));
+  QCOMPARE(startup.state(), deskflow::gui::WindowsLoginStartup::State::Stale);
+  QVERIFY2(startup.setEnabled(false, &error), qPrintable(error));
+  QCOMPARE(startup.state(), deskflow::gui::WindowsLoginStartup::State::Disabled);
+}
+
+void SettingsDialogTests::loginStartupRejectsForeignShortcut()
+{
+  if (!deskflow::platform::isWindows())
+    QSKIP("Windows shortcuts are only available on Windows.");
+  const auto folder = m_temp.filePath(QStringLiteral("foreign-startup"));
+  QVERIFY(QDir().mkpath(folder));
+  const auto shortcut = QDir(folder).filePath(QStringLiteral("Deskflow FileCopy.lnk"));
+  QFile foreign(shortcut);
+  QVERIFY(foreign.open(QIODevice::WriteOnly));
+  QVERIFY(foreign.write("foreign shortcut") > 0);
+  foreign.close();
+  const deskflow::gui::WindowsLoginStartup startup(folder, QCoreApplication::applicationFilePath());
+  QCOMPARE(startup.state(), deskflow::gui::WindowsLoginStartup::State::Conflict);
+  QString error;
+  QVERIFY(!startup.setEnabled(false, &error));
+  QVERIFY(!error.isEmpty());
+  QVERIFY(foreign.open(QIODevice::ReadOnly));
+  QCOMPARE(foreign.readAll(), QByteArray("foreign shortcut"));
+}
+
+void SettingsDialogTests::loginStartupEditsAreStagedUntilSave()
+{
+  if (!deskflow::platform::isWindows())
+    QSKIP("Windows shortcuts are only available on Windows.");
+  const auto folder = m_temp.filePath(QStringLiteral("dialog-startup"));
+  const auto appDir = m_temp.filePath(QStringLiteral("dialog-app"));
+  QVERIFY(QDir().mkpath(folder));
+  QVERIFY(QDir().mkpath(appDir));
+  const auto executable = QDir(appDir).filePath(QStringLiteral("deskflow.exe"));
+  QFile binary(executable);
+  QVERIFY(binary.open(QIODevice::WriteOnly));
+  binary.close();
+  const deskflow::gui::WindowsLoginStartup startup(folder, executable);
+  const ServerConfig config;
+  {
+    SettingsDialog dialog(nullptr, config, startup);
+    auto *option = dialog.findChild<QCheckBox *>(QStringLiteral("cbStartAtLogin"));
+    auto *buttons = dialog.findChild<QDialogButtonBox *>();
+    QVERIFY(option && buttons);
+    QVERIFY(!option->isChecked());
+    option->setChecked(true);
+    QVERIFY(buttons->button(QDialogButtonBox::Save)->isEnabled());
+    QCOMPARE(startup.state(), deskflow::gui::WindowsLoginStartup::State::Disabled);
+    buttons->button(QDialogButtonBox::Reset)->click();
+    QVERIFY(!option->isChecked());
+    option->setChecked(true);
+    buttons->button(QDialogButtonBox::Cancel)->click();
+    QCOMPARE(startup.state(), deskflow::gui::WindowsLoginStartup::State::Disabled);
+  }
+  {
+    SettingsDialog dialog(nullptr, config, startup);
+    auto *option = dialog.findChild<QCheckBox *>(QStringLiteral("cbStartAtLogin"));
+    auto *buttons = dialog.findChild<QDialogButtonBox *>();
+    QVERIFY(option && buttons);
+    option->setChecked(true);
+    buttons->button(QDialogButtonBox::Save)->click();
+    QCOMPARE(dialog.result(), QDialog::Accepted);
+    QCOMPARE(startup.state(), deskflow::gui::WindowsLoginStartup::State::Enabled);
+  }
+  {
+    SettingsDialog dialog(nullptr, config, startup);
+    auto *option = dialog.findChild<QCheckBox *>(QStringLiteral("cbStartAtLogin"));
+    auto *buttons = dialog.findChild<QDialogButtonBox *>();
+    QVERIFY(option && buttons);
+    QVERIFY(option->isChecked());
+    option->setChecked(false);
+    buttons->button(QDialogButtonBox::Save)->click();
+    QCOMPARE(dialog.result(), QDialog::Accepted);
+    QCOMPARE(startup.state(), deskflow::gui::WindowsLoginStartup::State::Disabled);
+  }
+}
+
+void SettingsDialogTests::loginStartupRepairsOldInstallation()
+{
+  if (!deskflow::platform::isWindows())
+    QSKIP("Windows shortcuts are only available on Windows.");
+  const auto folder = m_temp.filePath(QStringLiteral("missing-startup-folder"));
+  const auto oldDir = m_temp.filePath(QStringLiteral("old-install"));
+  const auto newDir = m_temp.filePath(QStringLiteral("new-install"));
+  QVERIFY(QDir().mkpath(oldDir));
+  QVERIFY(QDir().mkpath(newDir));
+  const auto oldExe = QDir(oldDir).filePath(QStringLiteral("deskflow.exe"));
+  const auto newExe = QDir(newDir).filePath(QStringLiteral("deskflow.exe"));
+  QFile oldBinary(oldExe);
+  QVERIFY(oldBinary.open(QIODevice::WriteOnly));
+  oldBinary.close();
+  QFile newBinary(newExe);
+  QVERIFY(newBinary.open(QIODevice::WriteOnly));
+  newBinary.close();
+  QFile marker(QDir(oldDir).filePath(QStringLiteral("deskflow-filecopy.package")));
+  QVERIFY(marker.open(QIODevice::WriteOnly));
+  QVERIFY(marker.write("Deskflow FileCopy\n") > 0);
+  marker.close();
+  QFile newMarker(QDir(newDir).filePath(QStringLiteral("deskflow-filecopy.package")));
+  QVERIFY(newMarker.open(QIODevice::WriteOnly));
+  QVERIFY(newMarker.write("Deskflow FileCopy\n") > 0);
+  newMarker.close();
+  const deskflow::gui::WindowsLoginStartup oldStartup(folder, oldExe);
+  const deskflow::gui::WindowsLoginStartup newStartup(folder, newExe);
+  QCOMPARE(oldStartup.state(), deskflow::gui::WindowsLoginStartup::State::Disabled);
+  QString error;
+  QVERIFY2(oldStartup.setEnabled(true, &error), qPrintable(error));
+  QCOMPARE(newStartup.state(), deskflow::gui::WindowsLoginStartup::State::OtherInstallation);
+  {
+    const ServerConfig config;
+    SettingsDialog dialog(nullptr, config, newStartup);
+    auto *option = dialog.findChild<QCheckBox *>(QStringLiteral("cbStartAtLogin"));
+    auto *buttons = dialog.findChild<QDialogButtonBox *>();
+    QVERIFY(option && buttons);
+    QVERIFY(option->isChecked());
+    QVERIFY(buttons->button(QDialogButtonBox::Save)->isEnabled());
+    buttons->button(QDialogButtonBox::Save)->click();
+    QCOMPARE(dialog.result(), QDialog::Accepted);
+    QCOMPARE(newStartup.state(), deskflow::gui::WindowsLoginStartup::State::Enabled);
+  }
+  QVERIFY2(oldStartup.setEnabled(true, &error), qPrintable(error));
+  QVERIFY(QFile::remove(oldExe));
+  QCOMPARE(newStartup.state(), deskflow::gui::WindowsLoginStartup::State::Stale);
+  QVERIFY2(newStartup.setEnabled(true, &error), qPrintable(error));
+  QCOMPARE(newStartup.state(), deskflow::gui::WindowsLoginStartup::State::Enabled);
 }
 
 QTEST_MAIN(SettingsDialogTests)

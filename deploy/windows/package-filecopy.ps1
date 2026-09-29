@@ -14,7 +14,7 @@ OutputDirectory must be outside the source tree. Each run creates a fresh stage.
   -CrtDirectory F:/deskflow-tools/msvc/VC/Redist/MSVC/14.44.35112/x64/Microsoft.VC143.CRT `
   -Dumpbin F:/deskflow-tools/msvc/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/dumpbin.exe `
   -Iscc F:/deskflow-tools/innosetup-6.7.3/ISCC.exe -OutputDirectory F:/deskflow-releases `
-  -Version 0.3.4 -ProjectUrl https://github.com/EugeneEvan/deskflow-filecopy
+  -Version 0.3.5 -ProjectUrl https://github.com/EugeneEvan/deskflow-filecopy
 #>
 [CmdletBinding()]
 param(
@@ -116,9 +116,9 @@ foreach ($name in @('Qt6Core.dll', 'Qt6Gui.dll', 'Qt6Widgets.dll', 'Qt6Network.d
 foreach ($file in Get-ChildItem -LiteralPath (Join-Path $BuildDirectory 'translations') -Filter '*.qm' -File) {
     Copy-PackageFile $file.FullName (Join-Path $payload ('translations\' + $file.Name))
 }
-foreach ($name in @('qt_zh_CN.qm', 'qtbase_zh_CN.qm', 'qt_en.qm', 'qtbase_en.qm')) {
-    $source = Join-Path $DependenciesDirectory ('translations\' + $name)
-    if (Test-Path -LiteralPath $source) { Copy-PackageFile $source (Join-Path $payload ('translations\' + $name)) }
+foreach ($language in @('zh_CN', 'en')) {
+    $source = Join-Path $DependenciesDirectory ('translations\Qt6\qtbase_' + $language + '.qm')
+    Copy-PackageFile $source (Join-Path $payload ('translations\qt_' + $language + '.qm'))
 }
 Copy-PackageFile (Join-Path $repository 'LICENSE') (Join-Path $payload 'LICENSE')
 Copy-Item -LiteralPath (Join-Path $repository 'LICENSES') -Destination $payload -Recurse
@@ -152,7 +152,9 @@ Cut/move, resume, drag and drop, and file transfer on macOS/Linux are not suppor
 Install into a writable folder of your choice (for example D:\Apps\Deskflow FileCopy).
 The installer uses a separate product identity and preserves existing settings.
 An optional task starts the app when the current user signs in; it is off by default.
-The installer remembers this choice on upgrade and removes its shortcut on uninstall.
+Preferences > Window can change login startup after installation, including portable use.
+Changes apply on Save. Upgrades read the actual startup shortcut to preserve this choice.
+Uninstall removes the startup shortcut only when it still points to this installation.
 Complete configuration and connect once before using login startup. The app remembers
 whether its core was running when closed and restores that saved state when launched.
 It does not install a service, launch the app after installation, or close a running process.

@@ -9,6 +9,7 @@
 #pragma once
 #include <QDialog>
 
+#include "gui/WindowsLoginStartup.h"
 #include "gui/config/ServerConfig.h"
 
 class SettingsDialogButtonBox;
@@ -22,7 +23,10 @@ class SettingsDialog : public QDialog
   Q_OBJECT
 
 public:
-  SettingsDialog(QWidget *parent, const ServerConfig &serverConfig);
+  SettingsDialog(
+      QWidget *parent, const ServerConfig &serverConfig,
+      deskflow::gui::WindowsLoginStartup loginStartup = deskflow::gui::WindowsLoginStartup::current()
+  );
   ~SettingsDialog() override;
   void selectFileTransferTab();
 
@@ -84,6 +88,8 @@ private:
   bool m_interfaceSetOnLoad = false;
   QString m_cachePath;
   int m_cacheLimitGiB = 20;
+  deskflow::gui::WindowsLoginStartup m_loginStartup;
+  deskflow::gui::WindowsLoginStartup::State m_loginStartupState = deskflow::gui::WindowsLoginStartup::State::Disabled;
   std::unique_ptr<Ui::SettingsDialog> ui;
   const ServerConfig &m_serverConfig;
   SettingsDialogButtonBox *m_buttonBox = nullptr;

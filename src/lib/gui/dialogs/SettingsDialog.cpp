@@ -22,17 +22,20 @@
 
 #include <QComboBox>
 #include <QDir>
+#include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QMessageBox>
 #include <QScreen>
 
 #include <exception>
+#include <utility>
 
 using namespace deskflow::gui;
 
-SettingsDialog::SettingsDialog(QWidget *parent, const ServerConfig &serverConfig)
+SettingsDialog::SettingsDialog(QWidget *parent, const ServerConfig &serverConfig, WindowsLoginStartup loginStartup)
     : QDialog(parent),
+      m_loginStartup(std::move(loginStartup)),
       ui{std::make_unique<Ui::SettingsDialog>()},
       m_serverConfig(serverConfig),
       m_buttonBox{new SettingsDialogButtonBox(this)}
@@ -113,6 +116,8 @@ void SettingsDialog::changeEvent(QEvent *e)
     ui->retranslateUi(this);
     updateText();
     updateTlsControlsEnabled();
+    if (QFile::exists(ui->lineTlsCertPath->text()))
+      updateKeyLengthOnFile(ui->lineTlsCertPath->text());
   }
 }
 
@@ -149,6 +154,7 @@ void SettingsDialog::initConnections() const
   connect(ui->rbCloseToTray, &QRadioButton::toggled, this, &SettingsDialog::setButtonBoxEnabledButtons);
   connect(ui->cbElevateDaemon, &QCheckBox::toggled, this, &SettingsDialog::setButtonBoxEnabledButtons);
   connect(ui->cbAutoUpdate, &QCheckBox::toggled, this, &SettingsDialog::setButtonBoxEnabledButtons);
+  connect(ui->cbStartAtLogin, &QCheckBox::toggled, this, &SettingsDialog::setButtonBoxEnabledButtons);
   connect(ui->cbGuiDebug, &QCheckBox::toggled, this, &SettingsDialog::setButtonBoxEnabledButtons);
   connect(ui->cbShowVersion, &QCheckBox::toggled, this, &SettingsDialog::setButtonBoxEnabledButtons);
   connect(ui->cbRequireClientCert, &QCheckBox::toggled, this, &SettingsDialog::setButtonBoxEnabledButtons);
@@ -191,7 +197,7 @@ void SettingsDialog::regenCertificates()
 void SettingsDialog::browseCertificatePath()
 {
   QString fileName = QFileDialog::getSaveFileName(
-      this, tr("Select a TLS certificate to use..."), ui->lineTlsCertPath->text(), "Cert (*.pem)", nullptr,
+      this, tr("Select a TLS certificate to use..."), ui->lineTlsCertPath->text(), tr("Cert (*.pem)"), nullptr,
       QFileDialog::DontConfirmOverwrite
   );
 
@@ -208,8 +214,9 @@ void SettingsDialog::browseCertificatePath()
 
 void SettingsDialog::browseLogPath()
 {
-  QString fileName =
-      QFileDialog::getSaveFileName(this, tr("Save log file to..."), ui->lineLogFilename->text(), "Logs (*.log *.txt)");
+  QString fileName = QFileDialog::getSaveFileName(
+      this, tr("Save log file to..."), ui->lineLogFilename->text(), tr("Logs (*.log *.txt)")
+  );
 
   if (!fileName.isEmpty()) {
     ui->lineLogFilename->setText(fileName);
@@ -257,6 +264,18 @@ void SettingsDialog::accept()
   if (!Settings::isWritable())
     return;
 
+  if (deskflow::platform::isWindows() &&
+      (ui->cbStartAtLogin->isChecked() != (m_loginStartupState == WindowsLoginStartup::State::Enabled ||
+                                           m_loginStartupState == WindowsLoginStartup::State::OtherInstallation) ||
+       m_loginStartupState == WindowsLoginStartup::State::Stale ||
+       m_loginStartupState == WindowsLoginStartup::State::OtherInstallation)) {
+    QString error;
+    if (!m_loginStartup.setEnabled(ui->cbStartAtLogin->isChecked(), &error)) {
+      QMessageBox::warning(this, tr("Login startup"), error);
+      return;
+    }
+  }
+
   const auto language = I18N::nativeTo639Name(ui->comboLanguage->currentText());
   Settings::setValue(Settings::Core::FileTransferCachePath, m_cachePath);
   Settings::setValue(Settings::Core::FileTransferCacheLimitGiB, m_cacheLimitGiB);
@@ -297,6 +316,16 @@ void SettingsDialog::accept()
 
 void SettingsDialog::loadFromConfig()
 {
+  if (deskflow::platform::isWindows()) {
+    QString error;
+    m_loginStartupState = m_loginStartup.state(&error);
+    ui->cbStartAtLogin->setChecked(
+        m_loginStartupState == WindowsLoginStartup::State::Enabled ||
+        m_loginStartupState == WindowsLoginStartup::State::OtherInstallation
+    );
+    ui->cbStartAtLogin->setToolTip(error);
+  }
+  ui->cbStartAtLogin->setVisible(deskflow::platform::isWindows());
   m_cachePath = Settings::value(Settings::Core::FileTransferCachePath).toString();
   m_cacheLimitGiB = Settings::value(Settings::Core::FileTransferCacheLimitGiB).toInt();
   ui->btnFileCache->setVisible(deskflow::platform::isWindows());
@@ -424,7 +453,7 @@ void SettingsDialog::updateKeyLengthOnFile(const QString &path)
     labelIcon = QPixmap(QIcon::fromTheme(QIcon::ThemeIcon::SecurityHigh).pixmap(24, 24));
 
   ui->lblTlsCertInfo->setPixmap(labelIcon);
-  ui->lblTlsCertInfo->setToolTip(QStringLiteral("Key length: %1 bits").arg(QString::number(length)));
+  ui->lblTlsCertInfo->setToolTip(tr("Key length: %1 bits").arg(QString::number(length)));
 }
 
 void SettingsDialog::updateControls()
@@ -447,6 +476,10 @@ void SettingsDialog::updateControls()
   ui->rbShowOnStart->setEnabled(writable);
   ui->btnClearAllSettings->setEnabled(writable);
   ui->cbAutoUpdate->setEnabled(writable);
+  ui->cbStartAtLogin->setEnabled(
+      writable && m_loginStartupState != WindowsLoginStartup::State::Conflict &&
+      m_loginStartupState != WindowsLoginStartup::State::Error
+  );
   ui->cbPreventSleep->setEnabled(writable);
   ui->lineTlsCertPath->setEnabled(writable);
   ui->comboTlsKeyLength->setEnabled(writable);
@@ -495,6 +528,10 @@ bool SettingsDialog::isModified() const
       (ui->rbCloseToTray->isChecked() != Settings::value(Settings::Gui::CloseToTray).toBool()) ||
       (ui->cbElevateDaemon->isChecked() != Settings::value(Settings::Daemon::Elevate).toBool()) ||
       (ui->cbAutoUpdate->isChecked() != Settings::value(Settings::Gui::AutoUpdateCheck).toBool()) ||
+      (deskflow::platform::isWindows() &&
+       (ui->cbStartAtLogin->isChecked() != (m_loginStartupState == WindowsLoginStartup::State::Enabled ||
+                                            m_loginStartupState == WindowsLoginStartup::State::OtherInstallation) ||
+        m_loginStartupState == WindowsLoginStartup::State::OtherInstallation)) ||
       (ui->cbGuiDebug->isChecked() != Settings::value(Settings::Log::GuiDebug).toBool()) ||
       (ui->cbShowVersion->isChecked() != Settings::value(Settings::Gui::ShowVersionInTitle).toBool()) ||
       (ui->rbIconMono->isChecked() != Settings::value(Settings::Gui::SymbolicTrayIcon).toBool()) ||
@@ -533,6 +570,7 @@ bool SettingsDialog::isDefault() const
       (ui->rbCloseToTray->isChecked() == Settings::defaultValue(Settings::Gui::CloseToTray).toBool()) &&
       (ui->cbElevateDaemon->isChecked() == Settings::defaultValue(Settings::Daemon::Elevate).toBool()) &&
       (ui->cbAutoUpdate->isChecked() == Settings::defaultValue(Settings::Gui::AutoUpdateCheck).toBool()) &&
+      (!deskflow::platform::isWindows() || !ui->cbStartAtLogin->isChecked()) &&
       (ui->cbGuiDebug->isChecked() == Settings::defaultValue(Settings::Log::GuiDebug).toBool()) &&
       (ui->cbShowVersion->isChecked() == Settings::defaultValue(Settings::Gui::ShowVersionInTitle).toBool()) &&
       (ui->rbIconMono->isChecked() == Settings::defaultValue(Settings::Gui::SymbolicTrayIcon).toBool()) &&
@@ -564,6 +602,7 @@ void SettingsDialog::resetToDefault()
   ui->cbFileTransfer->setChecked(Settings::defaultValue(Settings::Core::FileTransferEnabled).toBool());
   ui->cbElevateDaemon->setChecked(Settings::defaultValue(Settings::Daemon::Elevate).toBool());
   ui->cbAutoUpdate->setChecked(Settings::defaultValue(Settings::Gui::AutoUpdateCheck).toBool());
+  ui->cbStartAtLogin->setChecked(false);
   ui->cbGuiDebug->setChecked(Settings::defaultValue(Settings::Log::GuiDebug).toBool());
   ui->cbShowVersion->setChecked(Settings::defaultValue(Settings::Gui::ShowVersionInTitle).toBool());
   ui->cbRunEnterCommand->setChecked(Settings::defaultValue(Settings::Core::EnableEnterCommand).toBool());

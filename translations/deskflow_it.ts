@@ -55,6 +55,26 @@ p, li { white-space: pre-wrap; }
         <source>About Deskflow FileCopy</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Windows file copy, based on Deskflow</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Independent derivative maintained by EugeneEvan</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>System: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Portable Mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Session: %1 (%2)</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>ActionDialog</name>
@@ -1254,6 +1274,14 @@ Enabling this setting will disable the server config GUI.</source>
 L&apos;abilitazione di questa impostazione disabiliterà l&apos;interfaccia grafica di configurazione del server.</translation>
     </message>
     <message>
+        <source>Filename invalid</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please select a valid configuration file.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>%1 Configurations (*.conf);;All files (*.*)</source>
         <extracomment>%1 is replaced with the application names (*.conf) and (*.*) should not be translated</extracomment>
         <translation>%1 Configurazioni (*.conf);;Tutti i file (*.*)</translation>
@@ -1342,6 +1370,10 @@ L&apos;abilitazione di questa impostazione disabiliterà l&apos;interfaccia graf
         <translation>Esegui sempre come sistema (funziona nella schermata di accesso e UAC)</translation>
     </message>
     <message>
+        <source>Logs (*.log *.txt)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>%1 Clear Settings</source>
         <translation type="unfinished">%1 Azzera Impostazioni</translation>
     </message>
@@ -1374,11 +1406,19 @@ L&apos;abilitazione di questa impostazione disabiliterà l&apos;interfaccia graf
         <translation>Output di debug dettagliato</translation>
     </message>
     <message>
+        <source>Login startup</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>File copy is unavailable: enable TLS encryption on both computers.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <source>File copy is unavailable: enable clipboard sharing in the server configuration.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Key length: %1 bits</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1404,6 +1444,10 @@ L&apos;abilitazione di questa impostazione disabiliterà l&apos;interfaccia graf
     <message>
         <source>Select a TLS certificate to use...</source>
         <translation>Seleziona un certificato TLS da utilizzare...</translation>
+    </message>
+    <message>
+        <source>Cert (*.pem)</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Save log file to...</source>
@@ -1541,6 +1585,10 @@ L&apos;abilitazione di questa impostazione disabiliterà l&apos;interfaccia graf
         <source>Screen commands</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Start when I sign in</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>SettingsDialogButtonBox</name>
@@ -1640,6 +1688,45 @@ L&apos;abilitazione di questa impostazione disabiliterà l&apos;interfaccia graf
     <message>
         <source>Encryption Disabled</source>
         <translation>Crittografia disabilitata</translation>
+    </message>
+</context>
+<context>
+    <name>WindowsLoginStartup</name>
+    <message>
+        <source>Could not initialize Windows shortcuts.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not open the login startup shortcut.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The login startup shortcut cannot be read.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The login startup shortcut belongs to another program.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not create the login startup shortcut.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not write the login startup shortcut.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not locate the Windows login startup folder.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not remove the login startup shortcut.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Login startup is only available on Windows.</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>

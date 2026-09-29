@@ -693,6 +693,13 @@
             </widget>
            </item>
            <item>
+            <widget class="QCheckBox" name="cbStartAtLogin">
+             <property name="text">
+              <string>Start when I sign in</string>
+             </property>
+            </widget>
+           </item>
+           <item>
             <widget class="QCheckBox" name="cbAutoUpdate">
              <property name="text">
               <string>Check for updates on startup</string>
