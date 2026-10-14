@@ -29,7 +29,7 @@ class FileTransferBridge
 {
 public:
   using Publish = std::function<bool(const QStringList &, bool alreadyPublished)>;
-  FileTransferBridge(IEventQueue *events, IStream *stream, Publish publish);
+  FileTransferBridge(IEventQueue *events, IStream *stream, Publish publish, std::function<bool()> sourceAllowed = {});
   ~FileTransferBridge();
   static bool enabled();
   bool available() const;
@@ -56,6 +56,7 @@ private:
   void sendFrame(const QByteArray &payload);
   void cancelSession(const QString &reason);
   void pumpAgent();
+  void sourceChanged(const fileagent::Message &message);
   static uint32_t clipboardSequence();
 
   IEventQueue *m_events;
@@ -73,6 +74,8 @@ private:
   std::chrono::steady_clock::time_point m_agentStarted{};
   uint64_t m_generation = 0;
   fileagent::PublicationLifetime m_publication;
+  fileagent::SourceNotificationLifetime m_sourceLifetime;
+  std::optional<fileagent::Message> m_pendingSource;
   bool m_negotiated = false;
   bool m_active = false;
   bool m_publishFailed = false;

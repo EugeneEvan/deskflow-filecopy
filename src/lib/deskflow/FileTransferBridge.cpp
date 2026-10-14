@@ -8,6 +8,7 @@
 
 #include "base/Event.h"
 #include "base/IEventQueue.h"
+#include "base/Log.h"
 #include "common/FileTransferCache.h"
 #include "common/Settings.h"
 #include "deskflow/Clipboard.h"
@@ -86,10 +87,13 @@ struct FileTransferBridge::WakeState
   bool pending = false;
 };
 
-FileTransferBridge::FileTransferBridge(IEventQueue *events, IStream *stream, Publish publish)
+FileTransferBridge::FileTransferBridge(
+    IEventQueue *events, IStream *stream, Publish publish, std::function<bool()> sourceAllowed
+)
     : m_events(events),
       m_stream(stream),
       m_publish(std::move(publish)),
+      m_sourceLifetime(std::move(sourceAllowed)),
       m_cancelGeneration(cancelGeneration.load()),
       m_receiveToken(++receiveToken),
       m_wakeState(std::make_shared<WakeState>(events, this, m_receiveToken))
@@ -235,7 +239,15 @@ void FileTransferBridge::setNegotiated(bool negotiated)
     m_active = false;
     return;
   }
-  if (m_session || m_system)
+  if (m_system) {
+    if (m_pendingSource) {
+      auto source = std::move(*m_pendingSource);
+      m_pendingSource.reset();
+      sourceChanged(source);
+    }
+    return;
+  }
+  if (m_session)
     return;
   FileTransferSession::Callbacks callbacks;
   callbacks.send = [this](const QByteArray &bytes) { sendFrame(bytes); };
@@ -265,7 +277,8 @@ void FileTransferBridge::setNegotiated(bool negotiated)
 
 void FileTransferBridge::offer(const IClipboard *clipboard)
 {
-  if (!m_negotiated || !available() || !clipboard->open(0))
+  // SYSTEM sources come exclusively from the user's agent observations.
+  if (m_system || !m_negotiated || !available() || !clipboard->open(0))
     return;
   const auto refs = clipboard->has(IClipboard::Format::Files)
                         ? FileTransferFormat::unmarshall(clipboard->get(IClipboard::Format::Files))
@@ -280,16 +293,6 @@ void FileTransferBridge::offer(const IClipboard *clipboard)
   m_active = true;
   m_publishFailed = false;
   ++m_generation;
-#ifdef Q_OS_WIN
-  if (m_system) {
-    fileagent::Message message{fileagent::Type::StartSend};
-    message.generation = m_generation;
-    message.sequence = m_clipboardSequence;
-    message.roots = paths;
-    m_agent->send(message);
-    return;
-  }
-#endif
   m_session->startSend(paths);
 }
 
@@ -315,9 +318,11 @@ void FileTransferBridge::dispatchReceived(const QByteArray &payload, uint32_t se
 {
   if (!m_negotiated || !available())
     return;
-  // Only Begin claims a new clipboard lifetime. Late ACK/Abort frames from a
-  // cancelled sender must not re-activate the bridge.
-  if (!m_active && payload.size() >= 26 && static_cast<quint8>(payload[5]) == 1) {
+  // Every Begin claims a new lifetime, including a replacement received before
+  // the old worker's asynchronous Cancelled event. Do not invalidate the
+  // receive queue: the new batch's subsequent frames may already be queued.
+  // Session validates the Begin and handles simultaneous-send conflicts.
+  if (payload.size() >= 26 && static_cast<quint8>(payload[5]) == 1) {
     // Use the arrival sequence: a queued Begin must not claim a newer Ctrl+C.
     m_clipboardSequence = sequence;
     // Ready is only valid after the matching agent publication is acknowledged.
@@ -351,7 +356,44 @@ void FileTransferBridge::cancel(const QString &reason)
 
 void FileTransferBridge::sourceClipboardChanged()
 {
+  // A delayed legacy ownership event for the source just reported by the
+  // user agent must not cancel that new generation. The agent observes actual
+  // subsequent changes, including text/empty clipboards invisible to SYSTEM.
+  if (m_system && m_active && m_clipboardSequence == clipboardSequence())
+    return;
   cancel(QStringLiteral("Clipboard changed; previous transfer cancelled"));
+}
+
+void FileTransferBridge::sourceChanged(const fileagent::Message &message)
+{
+#ifdef Q_OS_WIN
+  if (!m_negotiated) {
+    if (!m_pendingSource || message.sourceRevision > m_pendingSource->sourceRevision)
+      m_pendingSource = message;
+    return;
+  }
+  if (!available() || !m_sourceLifetime.accept(message, clipboardSequence(), m_active, m_clipboardSequence)) {
+    LOG_DEBUG("file agent source skipped: reason=stale-or-unavailable");
+    return;
+  }
+  LOG_DEBUG(
+      "file agent source: files=%d roots=%zu sequence=%lu", message.type == fileagent::Type::SourceClipboardFiles,
+      static_cast<size_t>(message.roots.size()), static_cast<unsigned long>(message.sequence)
+  );
+  cancelSession(QStringLiteral("Clipboard changed; previous transfer cancelled"));
+  m_active = false;
+  m_clipboardSequence = message.sequence;
+  if (message.type == fileagent::Type::SourceChanged)
+    return;
+  m_active = true;
+  m_publishFailed = false;
+  fileagent::Message start{fileagent::Type::StartSend};
+  start.generation = ++m_generation;
+  start.sourceRevision = message.sourceRevision;
+  start.sequence = message.sequence;
+  start.roots = message.roots;
+  m_agent->send(start);
+#endif
 }
 
 void FileTransferBridge::tick()
@@ -440,12 +482,24 @@ void FileTransferBridge::pumpAgent()
       }
       continue;
     }
-    if (!m_agentReady || (message.type != Send && message.type != Progress && message.type != Published)) {
+    if (!m_agentReady || (message.type != Send && message.type != Progress && message.type != Published &&
+                          message.type != SourceClipboardFiles && message.type != SourceChanged)) {
       m_agent->stop();
       break;
     }
-    if (message.generation != m_generation)
+    if (message.type == SourceClipboardFiles || message.type == SourceChanged) {
+      sourceChanged(message);
       continue;
+    }
+    if (message.generation != m_generation) {
+      // A local source change can reach the core before the cancelled worker's
+      // Abort. Its transfer UUID makes it safe to revoke only that old batch;
+      // stale data, publications and progress must still never cross lifetimes.
+      if (message.type == Send && message.generation < m_generation && message.payload.size() >= 26 &&
+          static_cast<quint8>(message.payload[5]) == 7)
+        sendFrame(message.payload);
+      continue;
+    }
     if (message.type == Send)
       sendFrame(message.payload);
     else if (message.type == Progress)

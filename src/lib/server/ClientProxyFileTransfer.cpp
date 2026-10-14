@@ -18,9 +18,13 @@ ClientProxyFileTransfer::ClientProxyFileTransfer(
     const std::string &name, deskflow::IStream *stream, Server *server, IEventQueue *events
 )
     : ClientProxy1_8(name, stream, server, events),
-      m_transfer(events, stream, [this, server](const QStringList &paths, bool published) {
-        return server->publishTransferredFiles(this, paths, published);
-      })
+      m_transfer(
+          events, stream,
+          [this, server](const QStringList &paths, bool published) {
+            return server->publishTransferredFiles(this, paths, published);
+          },
+          [server] { return server->canTransferFiles(); }
+      )
 {
   m_transfer.setReadyCallback([this] {
     if (m_haveOptions)

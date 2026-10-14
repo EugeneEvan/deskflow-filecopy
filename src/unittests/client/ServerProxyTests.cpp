@@ -13,17 +13,29 @@
 #include "client/ServerProxyFileTransfer.h"
 #include "common/Settings.h"
 #include "deskflow/AppUtil.h"
+#include "deskflow/Clipboard.h"
+#include "deskflow/FileTransferBridge.h"
+#include "deskflow/FileTransferFormat.h"
+#include "deskflow/PlatformScreen.h"
 #include "deskflow/ProtocolTypes.h"
+#include "deskflow/ProtocolUtil.h"
+#include "deskflow/Screen.h"
 #include "io/IStream.h"
+#include "net/ISocketFactory.h"
 
+#include <QElapsedTimer>
+#include <QFile>
 #include <QTest>
+#include <QtEndian>
 
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <deque>
 #include <functional>
+#include <iterator>
 #include <map>
+#include <mutex>
 #include <string>
 #include <utility>
 #include <vector>
@@ -168,21 +180,38 @@ public:
 
   void addEvent(Event &&event) override
   {
+    std::lock_guard lock(m_addedMutex);
     m_addedEvents.emplace_back(std::move(event));
+  }
+
+  void dispatchPosted()
+  {
+    std::vector<Event> pending;
+    {
+      std::lock_guard lock(m_addedMutex);
+      pending.swap(m_addedEvents);
+    }
+    for (const auto &event : pending) {
+      dispatchEvent(event);
+      Event::deleteData(event);
+    }
   }
 
   EventQueueTimer *newTimer(double, void *) override
   {
-    return timer();
+    m_periodicTimer = makeTimer();
+    return m_periodicTimer;
   }
 
   EventQueueTimer *newOneShotTimer(double, void *) override
   {
-    return timer();
+    return makeTimer();
   }
 
-  void deleteTimer(EventQueueTimer *) override
+  void deleteTimer(EventQueueTimer *timer) override
   {
+    if (timer == m_periodicTimer)
+      m_periodicTimer = nullptr;
   }
 
   void addHandler(EventTypes type, void *target, const EventHandler &handler) override
@@ -217,7 +246,7 @@ public:
 
   EventQueueTimer *timer()
   {
-    return reinterpret_cast<EventQueueTimer *>(&m_timerStorage);
+    return m_periodicTimer ? m_periodicTimer : m_lastTimer;
   }
 
   const std::vector<Event> &addedEvents() const
@@ -226,6 +255,12 @@ public:
   }
 
 private:
+  EventQueueTimer *makeTimer()
+  {
+    m_timerStorage.push_back(0);
+    m_lastTimer = reinterpret_cast<EventQueueTimer *>(&m_timerStorage.back());
+    return m_lastTimer;
+  }
   struct HandlerKey
   {
     EventTypes type;
@@ -240,10 +275,213 @@ private:
     }
   };
 
-  int m_timerStorage = 0;
+  std::deque<int> m_timerStorage;
+  EventQueueTimer *m_lastTimer = nullptr;
+  EventQueueTimer *m_periodicTimer = nullptr;
   std::map<HandlerKey, EventHandler> m_handlers;
   std::vector<Event> m_addedEvents;
+  std::mutex m_addedMutex;
 };
+
+class MemoryScreen : public PlatformScreen
+{
+public:
+  explicit MemoryScreen(IEventQueue *events) : PlatformScreen(events)
+  {
+  }
+  Clipboard clipboard;
+  bool rejectWrites = false;
+  int writes = 0;
+  void *getEventTarget() const override
+  {
+    return const_cast<MemoryScreen *>(this);
+  }
+  bool getClipboard(ClipboardID, IClipboard *target) const override
+  {
+    return Clipboard::copy(target, &clipboard);
+  }
+  bool setClipboard(ClipboardID, const IClipboard *source) override
+  {
+    if (!source || rejectWrites)
+      return false;
+    ++writes;
+    return Clipboard::copy(&clipboard, source);
+  }
+  void setText(const std::string &text)
+  {
+    clipboard.open(0);
+    clipboard.empty();
+    clipboard.add(IClipboard::Format::Text, text);
+    clipboard.close();
+  }
+  std::string text() const
+  {
+    clipboard.open(0);
+    const auto result = clipboard.get(IClipboard::Format::Text);
+    clipboard.close();
+    return result;
+  }
+  void getShape(int32_t &x, int32_t &y, int32_t &width, int32_t &height) const override
+  {
+    x = y = 0;
+    width = height = 100;
+  }
+  void getCursorPos(int32_t &x, int32_t &y) const override
+  {
+    x = y = 0;
+  }
+  void getCursorCenter(int32_t &x, int32_t &y) const override
+  {
+    x = y = 50;
+  }
+  void reconfigure(uint32_t) override
+  {
+  }
+  uint32_t activeSides() override
+  {
+    return 0;
+  }
+  void warpCursor(int32_t, int32_t) override
+  {
+  }
+  uint32_t registerHotKey(KeyID, KeyModifierMask) override
+  {
+    return 0;
+  }
+  void unregisterHotKey(uint32_t) override
+  {
+  }
+  void fakeInputBegin() override
+  {
+  }
+  void fakeInputEnd() override
+  {
+  }
+  int32_t getJumpZoneSize() const override
+  {
+    return 0;
+  }
+  bool isAnyMouseButtonDown(uint32_t &) const override
+  {
+    return false;
+  }
+  void fakeMouseButton(ButtonID, bool) override
+  {
+  }
+  void fakeMouseMove(int32_t, int32_t) override
+  {
+  }
+  void fakeMouseRelativeMove(int32_t, int32_t) const override
+  {
+  }
+  void fakeMouseWheel(ScrollDelta) const override
+  {
+  }
+  void enable() override
+  {
+  }
+  void disable() override
+  {
+  }
+  void enter() override
+  {
+  }
+  bool canLeave() override
+  {
+    return true;
+  }
+  void leave() override
+  {
+  }
+  void checkClipboards() override
+  {
+  }
+  void openScreensaver(bool) override
+  {
+  }
+  void closeScreensaver() override
+  {
+  }
+  void screensaver(bool) override
+  {
+  }
+  void resetOptions() override
+  {
+  }
+  void setOptions(const OptionsList &) override
+  {
+  }
+  void setHalfDuplexMask(KeyModifierMask) override
+  {
+  }
+  void setSequenceNumber(uint32_t) override
+  {
+  }
+  bool isPrimary() const override
+  {
+    return false;
+  }
+  std::string getSecureInputApp() const override
+  {
+    return {};
+  }
+
+protected:
+  void updateButtons() override
+  {
+  }
+  IKeyState *getKeyState() const override
+  {
+    return nullptr;
+  }
+  void handleSystemEvent(const Event &) override
+  {
+  }
+};
+
+class UnusedSocketFactory : public ISocketFactory
+{
+public:
+  IDataSocket *create(IArchNetwork::AddressFamily, SecurityLevel) const override
+  {
+    return nullptr;
+  }
+  IListenSocket *createListen(IArchNetwork::AddressFamily, SecurityLevel) const override
+  {
+    return nullptr;
+  }
+};
+
+bool pumpUntil(RecordingEventQueue &events, const std::function<bool()> &finished)
+{
+  QElapsedTimer timer;
+  timer.start();
+  do {
+    events.dispatchPosted();
+    events.dispatchEvent(Event(EventTypes::Timer, events.timer()));
+    if (finished())
+      return true;
+    QTest::qWait(1);
+  } while (timer.elapsed() < 3000);
+  return false;
+}
+
+bool containsFileFrame(const std::string &output, quint8 type, quint32 sequence)
+{
+  size_t offset = 0;
+  while (output.size() - offset >= 8) {
+    if (output.compare(offset, 4, "FCDT") != 0)
+      return false;
+    const auto size = qFromBigEndian<quint32>(output.data() + offset + 4);
+    if (size > output.size() - offset - 8)
+      return false;
+    const auto *frame = output.data() + offset + 8;
+    if (size >= 26 && quint8(frame[5]) == type && qFromBigEndian<quint32>(frame + 22) == sequence)
+      return true;
+    offset += 8 + size;
+  }
+  return false;
+}
 
 class TestServerProxy : public ServerProxy
 {
@@ -418,6 +656,152 @@ void ServerProxyTests::fileCopyAcknowledgmentUsesMessageParser()
   QVERIFY(events.dispatchEvent(Event(EventTypes::StreamInputReady, stream.getEventTarget())));
   QCOMPARE(events.addedEvents().size(), size_t(1));
   QCOMPARE(events.addedEvents().front().getType(), EventTypes::ClientDisconnectRequested);
+}
+
+void ServerProxyTests::receivedFilesReplaceOwnedClipboard_data()
+{
+  QTest::addColumn<QString>("interruption");
+  QTest::newRow("owned-old-clipboard") << QString();
+  QTest::newRow("user-cancelled") << QStringLiteral("cancel");
+  QTest::newRow("new-local-copy") << QStringLiteral("copy");
+  QTest::newRow("sharing-disabled") << QStringLiteral("disabled");
+  QTest::newRow("clipboard-size-zero") << QStringLiteral("zero");
+  QTest::newRow("native-publication-failed") << QStringLiteral("write-failed");
+}
+
+void ServerProxyTests::receivedFilesReplaceOwnedClipboard()
+{
+#ifndef Q_OS_WIN
+  QSKIP("File copying is currently Windows only");
+#endif
+  QFETCH(QString, interruption);
+  QTemporaryDir source;
+  QTemporaryDir cache;
+  QVERIFY(source.isValid() && cache.isValid());
+  const QByteArray contents("verified incoming file");
+  QFile original(source.filePath("received.txt"));
+  QVERIFY(original.open(QIODevice::WriteOnly));
+  QCOMPARE(original.write(contents), contents.size());
+  original.close();
+  Settings::setValue(Settings::Core::FileTransferEnabled, true);
+  Settings::setValue(Settings::Security::TlsEnabled, true);
+  Settings::setValue(Settings::Server::EnableClipboard, true);
+  Settings::setValue(Settings::Core::FileTransferCachePath, cache.path());
+
+  // A real sender creates the complete, checksummed FCDT batch. Clipboard
+  // contents stay in MemoryScreen; Bridge only reads the OS sequence number.
+  QList<QByteArray> frames;
+  deskflow::FileTransferSession sender({[&](const QByteArray &frame) { frames.append(frame); }}, source.path());
+  sender.startSend({original.fileName()});
+  QTRY_VERIFY_WITH_TIMEOUT(
+      ([&] {
+        sender.pump();
+        return frames.size() == 5;
+      })(),
+      3000
+  );
+
+  RecordingEventQueue events;
+  FakeStream stream;
+  auto *memory = new MemoryScreen(&events);
+  deskflow::Screen screen(memory, &events);
+  Client client(&events, "test-client", NetworkAddress(), new UnusedSocketFactory, &screen);
+  auto *proxy = new TestFileServerProxy(&client, &stream, &events);
+  client.m_server = proxy;
+  client.m_active = true;
+  std::fill(std::begin(client.m_ownClipboard), std::end(client.m_ownClipboard), false);
+  std::fill(std::begin(client.m_sentClipboard), std::end(client.m_sentClipboard), false);
+  proxy->onOptionsChanged({kOptionFileCopy, kFileCopyCapability});
+  QCOMPARE(stream.takeOutput(), std::string("FCHL"));
+  stream.push("FCHA");
+  QVERIFY(events.dispatchEvent(Event(EventTypes::StreamInputReady, stream.getEventTarget())));
+  QVERIFY(proxy->canTransferFiles());
+
+  memory->setText("old local clipboard");
+  IScreen::ClipboardInfo grabbed{kClipboardClipboard, 0};
+  const Event localCopy(
+      EventTypes::ClipboardGrabbed, client.getEventTarget(), &grabbed, Event::EventFlags::DontFreeData
+  );
+  client.handleClipboardGrabbed(localCopy);
+  QVERIFY(client.m_ownClipboard[kClipboardClipboard]);
+  stream.takeOutput(); // Discard the outbound notification for the old local copy.
+
+  const auto receive = [&](const QByteArray &frame) {
+    FakeStream encoded;
+    const std::string payload(frame.constData(), frame.size());
+    ProtocolUtil::writef(&encoded, "FCDT%s", &payload);
+    stream.push(encoded.takeOutput());
+    return events.dispatchEvent(Event(EventTypes::StreamInputReady, stream.getEventTarget()));
+  };
+  std::string replies;
+  QVERIFY(receive(frames.front()));
+  QVERIFY(pumpUntil(events, [&] {
+    replies += stream.takeOutput();
+    return containsFileFrame(replies, 6, 0);
+  }));
+  for (qsizetype i = 1; i < frames.size(); ++i)
+    QVERIFY(receive(frames[i]));
+
+  const bool cancelled = interruption == "cancel" || interruption == "copy";
+  if (interruption == "cancel") {
+    deskflow::FileTransferBridge::requestCancelAll();
+    events.dispatchEvent(Event(EventTypes::Timer, events.timer()));
+  } else if (interruption == "copy") {
+    memory->setText("new local clipboard");
+    client.handleClipboardGrabbed(localCopy);
+    stream.takeOutput(); // This local CCLP is unrelated to the inbound FCDT batch.
+  } else if (interruption == "disabled") {
+    client.setOptions({kOptionClipboardSharing, 0});
+  } else if (interruption == "zero") {
+    client.setOptions({kOptionClipboardSharingSize, 0});
+  } else if (interruption == "write-failed") {
+    memory->rejectWrites = true;
+  }
+  replies.clear();
+  QVERIFY(pumpUntil(events, [&] {
+    replies += stream.takeOutput();
+    return containsFileFrame(replies, cancelled ? 7 : 6, cancelled ? 0 : 4);
+  }));
+
+  if (!interruption.isEmpty()) {
+    QCOMPARE(memory->writes, 0);
+    QCOMPARE(
+        memory->text(), interruption == "copy" ? std::string("new local clipboard") : std::string("old local clipboard")
+    );
+    QVERIFY(client.m_ownClipboard[kClipboardClipboard]);
+    return;
+  }
+  QCOMPARE(memory->writes, 1);
+  memory->clipboard.open(0);
+  const auto roots = FileTransferFormat::unmarshall(memory->clipboard.get(IClipboard::Format::Files));
+  memory->clipboard.close();
+  QCOMPARE(roots.size(), size_t(1));
+  QFile received(QString::fromStdString(roots.front().path));
+  QVERIFY(received.open(QIODevice::ReadOnly));
+  QCOMPARE(received.readAll(), contents);
+  for (ClipboardID id = 0; id < kClipboardEnd; ++id) {
+    QVERIFY(!client.m_ownClipboard[id]);
+    QCOMPARE(client.m_dataClipboard[id], memory->clipboard.marshall());
+  }
+}
+
+void ServerProxyTests::alreadyPublishedFilesReplaceOwnedClipboard()
+{
+  RecordingEventQueue events;
+  auto *memory = new MemoryScreen(&events);
+  deskflow::Screen screen(memory, &events);
+  Client client(&events, "test-client", NetworkAddress(), new UnusedSocketFactory, &screen);
+  // The agent has already published and Bridge accepted its generation and
+  // native sequence. Legacy ownership can still describe the previous copy.
+  client.m_ownClipboard[kClipboardClipboard] = true;
+  const QStringList roots{m_settingsDirectory.filePath("agent-received.txt")};
+  deskflow::FileTransferBridge::cacheFiles(&memory->clipboard, roots);
+  QVERIFY(client.publishTransferredFiles(roots, true));
+  QCOMPARE(memory->writes, 0);
+  for (ClipboardID id = 0; id < kClipboardEnd; ++id) {
+    QVERIFY(!client.m_ownClipboard[id]);
+    QCOMPARE(client.m_dataClipboard[id], memory->clipboard.marshall());
+  }
 }
 
 QTEST_MAIN(ServerProxyTests)

@@ -68,6 +68,18 @@
 #define VK_XBUTTON2 0x06
 #endif
 
+namespace {
+bool clipboardUnavailableToSystem()
+{
+  // An interactive SYSTEM core can observe the user's sequence changes while
+  // Windows exposes no formats to its token. This is not evidence that the
+  // user's clipboard is empty; the user agent handles file source discovery.
+  return deskflow::fileagent::processIdentity() == deskflow::fileagent::ProcessIdentity::System &&
+         CountClipboardFormats() == 0;
+}
+
+} // namespace
+
 // WM_POWERBROADCAST stuff
 #if !defined(PBT_APMRESUMEAUTOMATIC)
 #define PBT_APMRESUMEAUTOMATIC 0x0012
@@ -347,6 +359,8 @@ bool MSWindowsScreen::setClipboard(ClipboardID, const IClipboard *src)
 
 void MSWindowsScreen::checkClipboards()
 {
+  if (clipboardUnavailableToSystem())
+    return;
   // if we think we own the clipboard but we don't then somebody
   // grabbed the clipboard on this screen without us knowing.
   // tell the server that this screen grabbed the clipboard.
@@ -431,7 +445,25 @@ void *MSWindowsScreen::getEventTarget() const
 bool MSWindowsScreen::getClipboard(ClipboardID, IClipboard *dst) const
 {
   MSWindowsClipboard src(m_window);
-  return Clipboard::copy(dst, &src) && src.readSucceeded();
+  if (!src.open(0))
+    return false;
+  // Check visibility while holding the clipboard lock, then copy a complete
+  // snapshot. A failed native read must not replace the caller's old state.
+  if (clipboardUnavailableToSystem()) {
+    src.close();
+    return false;
+  }
+  Clipboard snapshot;
+  snapshot.open(0);
+  for (int32_t format = 0; format != static_cast<int>(IClipboard::Format::TotalFormats); ++format) {
+    const auto type = static_cast<IClipboard::Format>(format);
+    if (src.has(type))
+      snapshot.add(type, src.get(type));
+  }
+  const bool readable = src.readSucceeded();
+  src.close();
+  snapshot.close();
+  return readable && Clipboard::copy(dst, &snapshot);
 }
 
 void MSWindowsScreen::getShape(int32_t &x, int32_t &y, int32_t &w, int32_t &h) const
@@ -1355,6 +1387,8 @@ bool MSWindowsScreen::onDisplayChange()
 
 void MSWindowsScreen::onClipboardChange()
 {
+  if (clipboardUnavailableToSystem())
+    return;
   // now notify client that somebody changed the clipboard (unless
   // we're the owner).
   if (!MSWindowsClipboard::isOwnedByDeskflow()) {

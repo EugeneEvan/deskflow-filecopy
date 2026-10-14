@@ -13,6 +13,11 @@ private Q_SLOTS:
   void rejectsUnboundedAndUnknownMessages();
   void rejectsInvalidProgress();
   void publicationLifetime();
+  void sourceNotifications();
+  void sourceChangesInvalidatePendingStart();
+  void sourceLifetimeRejectsLateNotifications();
+  void sourcePermissionIsCheckedBeforeLifetimeChanges();
+  void sourceMessagesAreBounded();
   void pipeEofDisablesTransport();
   void stalledPipeHasBoundedQueueAndStop();
 };

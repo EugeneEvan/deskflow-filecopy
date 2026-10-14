@@ -4,6 +4,7 @@
  */
 #pragma once
 #include "deskflow/FileTransferSession.h"
+#include <optional>
 #include <vector>
 
 namespace deskflow::fileagent {
@@ -16,7 +17,9 @@ enum class Type : quint8
   Ready,
   Send,
   Progress,
-  Published
+  Published,
+  SourceClipboardFiles,
+  SourceChanged
 };
 constexpr qsizetype maxMessageBytes = 8 * 1024 * 1024 + 512;
 constexpr size_t maxQueuedMessages = 32;
@@ -26,6 +29,7 @@ struct Message
 {
   Type type;
   quint64 generation = 0;
+  quint64 sourceRevision = 0;
   quint32 sequence = 0;
   quint64 cacheLimit = 0;
   QString text;
@@ -38,6 +42,38 @@ struct Message
 QByteArray encode(const Message &message);
 bool decode(const QByteArray &bytes, Message &message);
 bool validEnvelope(const QByteArray &bytes);
+
+// Source revisions belong to the user's clipboard observations, independently
+// of the core's transfer generations. Native sequence numbers may wrap.
+class SourceClipboardTracker
+{
+public:
+  void published(quint32 sequence);
+  std::optional<Message> observe(quint32 sequence, bool owned, const QStringList &roots);
+  bool matches(quint64 revision, quint32 sequence, quint32 currentSequence, const QStringList &roots) const;
+  quint32 sequence() const
+  {
+    return m_sequence;
+  }
+
+private:
+  quint64 m_revision = 0;
+  quint32 m_sequence = 0;
+  QStringList m_roots;
+};
+
+class SourceNotificationLifetime
+{
+public:
+  explicit SourceNotificationLifetime(std::function<bool()> allowed = {}) : m_allowed(std::move(allowed))
+  {
+  }
+  bool accept(const Message &message, quint32 currentSequence, bool active, quint32 activeSequence);
+
+private:
+  std::function<bool()> m_allowed;
+  quint64 m_revision = 0;
+};
 
 class Decoder
 {

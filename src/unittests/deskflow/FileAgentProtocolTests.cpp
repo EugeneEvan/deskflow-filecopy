@@ -70,6 +70,144 @@ void FileAgentProtocolTests::publicationLifetime()
   QVERIFY(!lifetime.accept(7, 42, 42, QStringLiteral("transfer")));
   lifetime.begin(8, 55, QStringLiteral("new"));
   QVERIFY(!lifetime.accept(7, 42, 42, QStringLiteral("transfer")));
+  // A replacement Begin can arrive before the previous Cancelled callback,
+  // with no intervening change to the user's native clipboard sequence.
+  lifetime.begin(9, 55, QStringLiteral("replacement"));
+  QVERIFY(!lifetime.accept(8, 56, 56, QStringLiteral("new")));
+  QVERIFY(lifetime.accept(9, 56, 56, QStringLiteral("replacement")));
+}
+
+void FileAgentProtocolTests::sourceNotifications()
+{
+  SourceClipboardTracker tracker;
+  tracker.published(40);
+  const QStringList files{QStringLiteral("D:/fixture/source")};
+  auto update = tracker.observe(41, false, files);
+  QVERIFY(update);
+  QCOMPARE(update->type, Type::SourceClipboardFiles);
+  QCOMPARE(update->sequence, quint32(41));
+  QCOMPARE(update->roots, files);
+  QVERIFY(tracker.matches(update->sourceRevision, 41, 41, files));
+  QVERIFY(!tracker.observe(41, false, files));
+  Message decoded{Type::Ready};
+  QVERIFY(decode(encode(*update).mid(4), decoded));
+  QCOMPARE(decoded.sourceRevision, update->sourceRevision);
+  QCOMPARE(decoded.roots, files);
+  // A received batch is marked before its native notification is delivered.
+  tracker.published(42);
+  QVERIFY(!tracker.observe(42, true, files));
+  QVERIFY(!tracker.observe(43, true, files));
+  QVERIFY(!tracker.matches(update->sourceRevision, 41, 43, files));
+  QVERIFY(!tracker.observe(0, false, files));
+  auto next = tracker.observe(44, false, files);
+  QVERIFY(next);
+  QVERIFY(next->sourceRevision > update->sourceRevision);
+}
+
+void FileAgentProtocolTests::sourceChangesInvalidatePendingStart()
+{
+  SourceClipboardTracker tracker;
+  tracker.published(70);
+  const QStringList a{QStringLiteral("D:/fixture/a")};
+  const QStringList b{QStringLiteral("D:/fixture/b")};
+  const auto first = tracker.observe(71, false, a);
+  QVERIFY(first);
+  // Selecting text or clearing the clipboard revokes a queued file start.
+  const auto cleared = tracker.observe(72, false, {});
+  QVERIFY(cleared);
+  QCOMPARE(cleared->type, Type::SourceChanged);
+  QVERIFY(cleared->roots.isEmpty());
+  QVERIFY(!tracker.matches(first->sourceRevision, 71, 72, a));
+  const auto second = tracker.observe(73, false, b);
+  QVERIFY(second);
+  QVERIFY(!tracker.matches(first->sourceRevision, 71, 73, a));
+  QVERIFY(!tracker.matches(second->sourceRevision, 73, 74, b));
+  QVERIFY(!tracker.matches(second->sourceRevision, 73, 73, a));
+  QVERIFY(tracker.matches(second->sourceRevision, 73, 73, b));
+}
+
+void FileAgentProtocolTests::sourceLifetimeRejectsLateNotifications()
+{
+  SourceNotificationLifetime lifetime;
+  Message files{Type::SourceClipboardFiles};
+  files.sourceRevision = 1;
+  files.sequence = 101;
+  files.roots = {QStringLiteral("D:/fixture/a")};
+  QVERIFY(lifetime.accept(files, 101, false, 0));
+  QVERIFY(!lifetime.accept(files, 101, false, 0));
+  Message clear{Type::SourceChanged};
+  clear.sourceRevision = 3;
+  clear.sequence = 103;
+  QVERIFY(lifetime.accept(clear, 103, true, 101));
+  files.sourceRevision = 2;
+  files.sequence = 102;
+  QVERIFY(!lifetime.accept(files, 103, false, 0));
+  files.sourceRevision = 4;
+  files.sequence = 104;
+  QVERIFY(!lifetime.accept(files, 105, false, 0));
+  // A newer incoming Begin already claimed this exact native clipboard.
+  files.sourceRevision = 5;
+  files.sequence = 105;
+  QVERIFY(!lifetime.accept(files, 105, true, 105));
+  // A genuinely newer local copy cancels that receiving generation.
+  files.sourceRevision = 6;
+  files.sequence = 106;
+  QVERIFY(lifetime.accept(files, 106, true, 105));
+}
+
+void FileAgentProtocolTests::sourceMessagesAreBounded()
+{
+  Message files{Type::SourceClipboardFiles};
+  files.sourceRevision = 1;
+  files.sequence = 15;
+  QVERIFY(encode(files).isEmpty());
+  files.roots = {QStringLiteral("D:/fixture/a")};
+  QVERIFY(!encode(files).isEmpty());
+  files.sourceRevision = 0;
+  QVERIFY(encode(files).isEmpty());
+  files.sourceRevision = 1;
+  files.sequence = 0;
+  QVERIFY(encode(files).isEmpty());
+  files.sequence = 15;
+  files.roots = {QString(32769, QChar('x'))};
+  QVERIFY(encode(files).isEmpty());
+  files.roots = QStringList(deskflow::FileTransferSession::maxEntries + 1, QStringLiteral("x"));
+  QVERIFY(encode(files).isEmpty());
+  Message changed{Type::SourceChanged};
+  changed.sourceRevision = 2;
+  changed.sequence = 16;
+  Message decoded{Type::Ready};
+  const auto frame = encode(changed);
+  QVERIFY(!frame.isEmpty());
+  QVERIFY(decode(frame.mid(4), decoded));
+  QVERIFY(!decode(frame.mid(4) + QByteArray(1, '\0'), decoded));
+  Message start{Type::StartSend};
+  start.generation = 8;
+  start.sourceRevision = 7;
+  start.sequence = 17;
+  start.roots = {QStringLiteral("D:/fixture/a")};
+  QVERIFY(decode(encode(start).mid(4), decoded));
+  QCOMPARE(decoded.sourceRevision, quint64(7));
+}
+
+void FileAgentProtocolTests::sourcePermissionIsCheckedBeforeLifetimeChanges()
+{
+  bool allowed = false;
+  SourceNotificationLifetime lifetime([&] { return allowed; });
+  Message files{Type::SourceClipboardFiles};
+  files.sourceRevision = 2;
+  files.sequence = 202;
+  files.roots = {QStringLiteral("D:/fixture/a")};
+  // This gate precedes Bridge's cancelSession and StartSend, so a server with
+  // multiple peers cannot cancel an active receive or emit new network data.
+  QVERIFY(!lifetime.accept(files, 202, true, 201));
+  Message changed{Type::SourceChanged};
+  changed.sourceRevision = 3;
+  changed.sequence = 203;
+  QVERIFY(!lifetime.accept(changed, 203, true, 201));
+  allowed = true;
+  // Rejection did not even advance the observation lifetime.
+  QVERIFY(lifetime.accept(files, 202, true, 201));
 }
 
 void FileAgentProtocolTests::pipeEofDisablesTransport()

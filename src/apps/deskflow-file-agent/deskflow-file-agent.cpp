@@ -10,10 +10,13 @@
 #include "platform/MSWindowsClipboard.h"
 
 #include <QCoreApplication>
+#include <QDir>
 #include <QTimer>
 #include <QUuid>
 #include <ShlObj_core.h>
 #include <optional>
+#include <shellapi.h>
+#include <string>
 
 using namespace deskflow;
 using namespace deskflow::fileagent;
@@ -34,6 +37,7 @@ public:
     );
     if (!window)
       transport.stop();
+    source.published(GetClipboardSequenceNumber());
   }
   ~Agent()
   {
@@ -62,12 +66,78 @@ public:
     // original sequence until Default is accessible, then check before publish.
     if (active && defaultDesktop() && GetClipboardSequenceNumber() != sequence)
       cancel(QStringLiteral("Clipboard changed; previous transfer cancelled"));
+    observeSource();
     session->pump();
     if (!pendingRoots.isEmpty())
       publishPending();
   }
 
 private:
+  QStringList sourceRoots()
+  {
+    // Only clipboard memory is inspected here. All filesystem validation and
+    // reads remain in FileTransferSession's ordinary-user worker.
+    const auto data = static_cast<HDROP>(GetClipboardData(CF_HDROP));
+    const auto size = data ? GlobalSize(data) : 0;
+    if (size < sizeof(DROPFILES) || size > SIZE_T(maxMessageBytes))
+      return {};
+    const UINT count = DragQueryFileW(data, 0xffffffff, nullptr, 0);
+    if (count == 0 || count > FileTransferSession::maxEntries)
+      return {};
+    QStringList roots;
+    qsizetype bytes = 32;
+    for (UINT i = 0; i < count; ++i) {
+      const UINT length = DragQueryFileW(data, i, nullptr, 0);
+      if (length == 0 || length >= 32768)
+        return {};
+      std::wstring path(length + 1, L'\0');
+      if (DragQueryFileW(data, i, path.data(), length + 1) != length)
+        return {};
+      const auto root = QString::fromWCharArray(path.data(), int(length));
+      const auto utf8 = root.toUtf8();
+      bytes += 4 + utf8.size();
+      if (!QDir::isAbsolutePath(root) || utf8.size() > 32768 || bytes > maxMessageBytes)
+        return {};
+      roots.push_back(root);
+    }
+    return roots;
+  }
+
+  void observeSource()
+  {
+    // The SYSTEM core can receive WM_CLIPBOARDUPDATE while seeing no formats.
+    // Polling the cheap sequence in the user's existing timer also tolerates
+    // dropped window notifications and retries a temporarily locked clipboard.
+    if (!defaultDesktop() || GetClipboardSequenceNumber() == source.sequence())
+      return;
+    MSWindowsClipboard clipboard(window);
+    if (!clipboard.open(0))
+      return;
+    const auto observedSequence = GetClipboardSequenceNumber();
+    const bool owned = MSWindowsClipboard::isOwnedByDeskflow();
+    const auto roots = !owned && IsClipboardFormatAvailable(CF_HDROP) ? sourceRoots() : QStringList{};
+    const bool current = defaultDesktop() && GetClipboardSequenceNumber() == observedSequence;
+    clipboard.close();
+    if (!current)
+      return;
+    if (const auto message = source.observe(observedSequence, owned, roots))
+      transport.send(*message);
+  }
+
+  bool currentSource(const Message &message)
+  {
+    if (!defaultDesktop())
+      return false;
+    MSWindowsClipboard clipboard(window);
+    if (!clipboard.open(0))
+      return false;
+    const bool current =
+        defaultDesktop() && !MSWindowsClipboard::isOwnedByDeskflow() &&
+        source.matches(message.sourceRevision, message.sequence, GetClipboardSequenceNumber(), message.roots);
+    clipboard.close();
+    return current;
+  }
+
   void sendProgress(FileTransferSession::Progress progress)
   {
     Message message{Type::Progress};
@@ -152,7 +222,7 @@ private:
       pendingRoots.clear();
       pendingReady.reset();
       publicationLease.reset();
-      if (!defaultDesktop() || GetClipboardSequenceNumber() != sequence)
+      if (!currentSource(message))
         cancel(QStringLiteral("Clipboard changed or unavailable"));
       else
         session->startSend(message.roots, generation);
@@ -215,6 +285,7 @@ private:
       cancel(QStringLiteral("File clipboard publication failed"));
       return;
     }
+    source.published(publishedSequence);
     Message message{Type::Published};
     message.generation = generation;
     message.sequence = publishedSequence;
@@ -230,6 +301,7 @@ private:
   }
 
   WindowsTransport transport;
+  SourceClipboardTracker source;
   std::unique_ptr<FileTransferSession> session;
   HWND window = nullptr;
   quint64 generation = 0;

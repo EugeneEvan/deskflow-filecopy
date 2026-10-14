@@ -279,7 +279,9 @@ void Client::setClipboard(ClipboardID id, const IClipboard *clipboard)
 
 bool Client::publishTransferredFiles(const QStringList &paths, bool alreadyPublished)
 {
-  if (!m_enableClipboard || m_maximumClipboardSize == 0 || m_ownClipboard[kClipboardClipboard] ||
+  // FileTransferBridge validates the batch's clipboard lifetime before calling
+  // here. Direct file offers need not send a legacy clipboard ownership message.
+  if (!m_enableClipboard || m_maximumClipboardSize == 0 ||
       (!alreadyPublished && !deskflow::FileTransferBridge::publishFiles(m_screen, paths)))
     return false;
   Clipboard clipboard;

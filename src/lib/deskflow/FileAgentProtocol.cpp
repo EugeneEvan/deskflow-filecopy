@@ -111,8 +111,17 @@ bool decode(const QByteArray &bytes, Message &message)
       break;
     case StartSend:
       message.generation = in.u64();
+      message.sourceRevision = in.u64();
       message.sequence = in.u32();
       message.roots = roots(in);
+      break;
+    case SourceClipboardFiles:
+    case SourceChanged:
+      message.sourceRevision = in.u64();
+      message.sequence = in.u32();
+      require(message.sourceRevision != 0 && message.sequence != 0);
+      if (message.type == SourceClipboardFiles)
+        message.roots = roots(in);
       break;
     case Receive:
     case Send:
@@ -174,8 +183,16 @@ QByteArray encode(const Message &m)
     break;
   case StartSend:
     put64(out, m.generation);
+    put64(out, m.sourceRevision);
     put32(out, m.sequence);
     putRoots(out, m.roots);
+    break;
+  case SourceClipboardFiles:
+  case SourceChanged:
+    put64(out, m.sourceRevision);
+    put32(out, m.sequence);
+    if (m.type == SourceClipboardFiles)
+      putRoots(out, m.roots);
     break;
   case Receive:
   case Send:
@@ -234,5 +251,51 @@ bool Decoder::append(const QByteArray &bytes, std::vector<Message> &messages)
     m_buffer.remove(0, qsizetype(size) + 4);
   }
   return true;
+}
+
+void SourceClipboardTracker::published(quint32 sequence)
+{
+  m_sequence = sequence;
+  ++m_revision;
+  m_roots.clear();
+}
+
+std::optional<Message> SourceClipboardTracker::observe(quint32 sequence, bool owned, const QStringList &roots)
+{
+  if (sequence == 0 || sequence == m_sequence)
+    return std::nullopt;
+  published(sequence);
+  if (owned)
+    return std::nullopt;
+  m_roots = roots;
+  Message message{roots.isEmpty() ? Type::SourceChanged : Type::SourceClipboardFiles};
+  message.sourceRevision = m_revision;
+  message.sequence = sequence;
+  message.roots = roots;
+  return message;
+}
+
+bool SourceClipboardTracker::matches(
+    quint64 revision, quint32 sequence, quint32 currentSequence, const QStringList &roots
+) const
+{
+  return !m_roots.isEmpty() && revision == m_revision && sequence == m_sequence && sequence == currentSequence &&
+         roots == m_roots;
+}
+
+bool SourceNotificationLifetime::accept(
+    const Message &message, quint32 currentSequence, bool active, quint32 activeSequence
+)
+{
+  if (m_allowed && !m_allowed())
+    return false;
+  if ((message.type != Type::SourceClipboardFiles && message.type != Type::SourceChanged) ||
+      message.sourceRevision <= m_revision)
+    return false;
+  m_revision = message.sourceRevision;
+  // Never let a queued source event supersede a newer Begin that already
+  // claimed the same native clipboard. A later local copy has a new sequence.
+  return message.sequence != 0 && message.sequence == currentSequence &&
+         (!active || message.sequence != activeSequence);
 }
 } // namespace deskflow::fileagent
