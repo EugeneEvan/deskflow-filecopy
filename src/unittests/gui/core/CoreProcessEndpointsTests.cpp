@@ -83,6 +83,20 @@ void CoreProcessEndpointsTests::snapshotSupportsBothFamilies()
   QCOMPARE(spy.size(), 2);
 }
 
+void CoreProcessEndpointsTests::snapshotRestoresConnectionAndClientCount()
+{
+  const ServerConfig config;
+  CoreProcess process(config);
+  process.setMode(Settings::CoreMode::Server);
+  QSignalSpy clients(&process, &CoreProcess::connectedClientsChanged);
+  QVERIFY(command(process, "connectionEndpoints", kEndpoints));
+  QCOMPARE(process.connectionState(), deskflow::core::ConnectionState::Connected);
+  QCOMPARE(clients.last().first().toStringList(), QStringList{"client=a"});
+  QVERIFY(command(process, "connectionEndpoints", "[]"));
+  QCOMPARE(process.connectionState(), deskflow::core::ConnectionState::Listening);
+  QVERIFY(clients.last().first().toStringList().isEmpty());
+}
+
 void CoreProcessEndpointsTests::endpointsBeforeConnectedArePreserved()
 {
   const ServerConfig config;
@@ -137,6 +151,7 @@ void CoreProcessEndpointsTests::invalidSnapshotCannotDisplayConfiguredHost()
   QVERIFY(command(process, "connectionEndpoints", kEndpoints));
   QVERIFY(command(process, "connectionEndpoints", "invalid JSON"));
   QVERIFY(process.connectionEndpoints().isEmpty());
+  QCOMPARE(process.connectionState(), deskflow::core::ConnectionState::Disconnected);
   QVERIFY(command(
       process, "connectionEndpoints",
       QStringLiteral(

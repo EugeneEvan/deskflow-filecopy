@@ -70,6 +70,14 @@ create_test(
 )
 
 # Includes a real 60-second peer timeout, plus the remaining session cases.
+create_test(
+  NAME FileAgentProtocolTests
+  DEPENDS app
+  LIBS arch base ${extra_libs}
+  SOURCE FileAgentProtocolTests.cpp
+  WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/deskflow"
+)
+
 set_tests_properties(FileTransferSessionTests PROPERTIES TIMEOUT 90)
 
 create_test(

@@ -176,21 +176,9 @@ std::string MSWindowsClipboardFileConverter::toIClipboard(HANDLE data) const
       LOG_WARN("CF_HDROP contains an invalid file path");
       return {};
     }
-    FileRef ref{utf8Path, 0};
-    // Narrow filesystem paths use the ANSI code page on Windows.
-    const std::filesystem::path nativePath(widePath);
-    std::error_code error;
-    const auto status = std::filesystem::status(nativePath, error);
-    if (!error && std::filesystem::is_regular_file(status)) {
-      const auto fileSize = std::filesystem::file_size(nativePath, error);
-      if (!error) {
-        ref.size = fileSize;
-      }
-    }
-    if (error) {
-      LOG_WARN("CF_HDROP file metadata is unavailable");
-    }
-    refs.push_back(std::move(ref));
+    // Clipboard conversion is also used by the SYSTEM input core. File
+    // metadata and content are inspected only by the user's transfer worker.
+    refs.push_back({utf8Path, 0});
     ++cursor;
   }
 

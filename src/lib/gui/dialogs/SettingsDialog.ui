@@ -923,6 +923,27 @@
             </widget>
            </item>
            <item>
+            <widget class="QGroupBox" name="groupFullControl">
+             <property name="title"><string>Windows full control</string></property>
+             <layout class="QVBoxLayout" name="fullControlLayout">
+              <item><widget class="QLabel" name="lblFullControlInfo">
+               <property name="text"><string>Control administrator windows and UAC while keeping file copy in your signed-in user session. Installing, updating, applying configuration and stopping require administrator confirmation. Uses saved settings; save changes before applying.</string></property>
+               <property name="wordWrap"><bool>true</bool></property>
+              </widget></item>
+              <item><widget class="QLabel" name="lblFullControlStatus">
+               <property name="text"><string>Component status has not been checked.</string></property>
+               <property name="wordWrap"><bool>true</bool></property>
+               <property name="textFormat"><enum>Qt::TextFormat::PlainText</enum></property>
+              </widget></item>
+              <item><layout class="QHBoxLayout" name="fullControlButtons">
+               <item><widget class="QPushButton" name="btnFullControlInstall"><property name="text"><string>Enable / update component</string></property></widget></item>
+               <item><widget class="QPushButton" name="btnFullControlApply"><property name="text"><string>Apply saved configuration</string></property></widget></item>
+               <item><widget class="QPushButton" name="btnFullControlUninstall"><property name="text"><string>Disable full control</string></property></widget></item>
+              </layout></item>
+             </layout>
+            </widget>
+           </item>
+           <item>
             <widget class="QGroupBox" name="groupService">
              <property name="enabled">
               <bool>true</bool>

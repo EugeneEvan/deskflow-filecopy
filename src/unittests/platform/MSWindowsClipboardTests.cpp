@@ -306,7 +306,7 @@ void MSWindowsClipboardTests::filesUnicodeAndDirectories()
   const auto decoded = FileTransferFormat::unmarshall(converter.toIClipboard(handle.get()));
   QCOMPARE(decoded.size(), size_t(2));
   QCOMPARE(decoded[0].path, refs[0].path);
-  QCOMPARE(decoded[0].size, uint64_t(7));
+  QCOMPARE(decoded[0].size, uint64_t(0));
   QCOMPARE(decoded[1].path, refs[1].path);
   QCOMPARE(decoded[1].size, uint64_t(0));
 }

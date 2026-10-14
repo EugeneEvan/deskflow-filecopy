@@ -36,6 +36,7 @@ public:
   void run(QThread &daemonThread);
   void setForeground();
   void initLogging();
+  void setFullControlSettings(const QString &settingsFile);
   void connectIpcServer(const deskflow::core::ipc::DaemonIpcServer *ipcServer) const;
 
   static QString logFilename();
@@ -62,4 +63,5 @@ private:
   deskflow::core::ipc::DaemonIpcServer *m_ipcServer = nullptr;
   QString m_configFile;
   bool m_foreground = false;
+  bool m_fullControl = false;
 };

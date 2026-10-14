@@ -333,6 +333,18 @@ void MainWindow::connectSlots()
   connect(Settings::instance(), &Settings::settingsChanged, this, &MainWindow::settingsChanged);
 
   connect(&m_coreProcess, &CoreProcess::error, this, &MainWindow::coreProcessError);
+  connect(&m_coreProcess, &CoreProcess::fullControlError, this, [this](const QString &message) {
+    QMessageBox::warning(this, tr("Windows full control"), message);
+  });
+  connect(m_coreProcess.fullControlManager(), &FullControlManager::busyChanged, this, [this](bool busy) {
+    ui->btnToggleCore->setEnabled(!busy);
+    ui->btnRestartCore->setEnabled(!busy && m_coreProcess.isStarted());
+    m_actionStartCore->setEnabled(!busy);
+    m_actionStopCore->setEnabled(!busy && m_coreProcess.isStarted());
+    m_actionRestartCore->setEnabled(!busy && m_coreProcess.isStarted());
+    if (!busy)
+      coreProcessStateChanged(m_coreProcess.processState());
+  });
   connect(&m_coreProcess, &CoreProcess::logLine, this, &MainWindow::handleLogLine);
   connect(
       &m_coreProcess, &CoreProcess::processStateChanged, this, &MainWindow::coreProcessStateChanged,
@@ -509,6 +521,10 @@ void MainWindow::coreProcessError(CoreProcess::Error error)
 
 void MainWindow::startCore()
 {
+  if (Settings::value(Settings::Gui::FullControlEnabled).toBool()) {
+    m_coreProcess.start();
+    return;
+  }
   // Save current IP state when server starts
   if (m_coreProcess.mode() == CoreMode::Server && Settings::value(Settings::Core::Interface).toString().isEmpty()) {
     m_serverStartIPs = NetworkMonitor::validAddresses();
@@ -522,6 +538,10 @@ void MainWindow::startCore()
 
 void MainWindow::stopCore()
 {
+  if (Settings::value(Settings::Gui::FullControlEnabled).toBool()) {
+    m_coreProcess.stop();
+    return;
+  }
   qDebug() << "stopping core process";
   m_coreProcess.stop();
   m_actionStartCore->setVisible(true);
@@ -578,6 +598,8 @@ void MainWindow::openSettings()
 void MainWindow::openSettingsPage(bool fileTransfer)
 {
   auto dialog = SettingsDialog(this, m_serverConfig);
+  dialog.setFullControlManager(m_coreProcess.fullControlManager());
+  connect(&dialog, &SettingsDialog::requestFullControlAction, &m_coreProcess, &CoreProcess::manageFullControl);
   if (fileTransfer)
     dialog.selectFileTransferTab();
 
@@ -772,6 +794,8 @@ void MainWindow::open()
     if (ui->rbModeClient->isChecked() && ui->lineHostname->text().isEmpty())
       return;
     startCore();
+  } else if (Settings::value(Settings::Gui::FullControlEnabled).toBool()) {
+    m_coreProcess.fullControlManager()->refresh();
   }
 }
 
@@ -1016,6 +1040,13 @@ bool MainWindow::maybeHideToTray()
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
+  if (m_coreProcess.fullControlManager()->actionRunning()) {
+    event->ignore();
+    QMessageBox::information(
+        this, tr("Windows full control"), tr("Wait for the full control operation to finish before exiting.")
+    );
+    return;
+  }
   if (event->spontaneous() && maybeHideToTray()) {
     event->ignore();
     return;
@@ -1104,6 +1135,12 @@ void MainWindow::updateConnectionSummary()
   ui->connectionStatus->setText(title);
   ui->connectionStatus->setAccessibleName(title);
   ui->connectionStatus->setToolTip(summary);
+
+  const auto mode = m_coreProcess.mode();
+  const auto role = mode == CoreMode::Server   ? tr("This computer · Server")
+                    : mode == CoreMode::Client ? tr("This computer · Client")
+                                               : tr("This computer");
+  m_trayIcon->setToolTip(QStringLiteral("Deskflow FileCopy\n%1\n%2").arg(role, summary));
 }
 
 void MainWindow::updateDeviceOverview()

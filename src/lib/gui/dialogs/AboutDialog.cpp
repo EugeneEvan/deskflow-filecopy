@@ -61,7 +61,7 @@ void AboutDialog::updateText()
 {
   setWindowTitle(tr("About Deskflow FileCopy"));
   ui->lblDescription->setText(
-      QStringLiteral("Deskflow FileCopy 0.3.5\n%1\n%2")
+      QStringLiteral("Deskflow FileCopy 0.4.0\n%1\n%2")
           .arg(tr("Windows file copy, based on Deskflow"), tr("Independent derivative maintained by EugeneEvan"))
   );
 }
@@ -69,7 +69,7 @@ void AboutDialog::updateText()
 void AboutDialog::copyVersionText() const
 {
   QString infoString =
-      QStringLiteral("Deskflow FileCopy 0.3.5\n%1: %2 (%3)\nQt: %4\n%5")
+      QStringLiteral("Deskflow FileCopy 0.4.0\n%1: %2 (%3)\nQt: %4\n%5")
           .arg(kAppName, kVersion, kVersionGitSha, qVersion(), tr("System: %1").arg(QSysInfo::prettyProductName()));
   if (Settings::isPortableMode()) {
     infoString.append(QStringLiteral("\n") + tr("Portable Mode"));

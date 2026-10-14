@@ -125,6 +125,161 @@ CoreProcess::CoreProcess(const ServerConfig &serverConfig)
       qDebug("retry cancelled, process state is not retry pending");
     }
   });
+  m_observeTimer.setInterval(10000);
+  connect(&m_observeTimer, &QTimer::timeout, this, [this] {
+    if (fullControlEnabled() && !m_fullControl.busy())
+      m_fullControl.refresh();
+  });
+  connect(&m_fullControl, &FullControlManager::statusChanged, this, [this] {
+    if (!fullControlEnabled() || m_fullControlTransition || m_shutdown)
+      return;
+    const auto &status = m_fullControl.status();
+    if (status.valid && status.installed && status.running) {
+      setProcessState(ProcessState::Started);
+      observeCore();
+      m_observeTimer.start();
+    } else if (status.valid) {
+      setProcessState(ProcessState::Stopped);
+      setConnectionState(ConnectionState::Disconnected);
+    }
+  });
+  connect(
+      &m_fullControl, &FullControlManager::finished, this,
+      [this](FullControlManager::Action action, bool succeeded, const QString &message) {
+        m_fullControlTransition = false;
+        if (m_shutdown)
+          return;
+        if (!succeeded) {
+          Q_EMIT fullControlError(message);
+          if (m_restoreDesktopAfterFailure) {
+            m_restoreDesktopAfterFailure = false;
+            start(ProcessMode::Desktop);
+          }
+          return;
+        }
+        m_restoreDesktopAfterFailure = false;
+        if (!m_wasFullControl && action != FullControlManager::Action::Install)
+          return;
+        if (action == FullControlManager::Action::Stop || action == FullControlManager::Action::Uninstall ||
+            (action == FullControlManager::Action::Apply && !m_fullControl.status().running)) {
+          if (m_coreIpcClient) {
+            m_coreIpcClient->disconnectFromServer();
+            m_coreIpcClient->deleteLater();
+            m_coreIpcClient = nullptr;
+          }
+          setProcessState(ProcessState::Stopped);
+          setConnectionState(ConnectionState::Disconnected);
+          if (action == FullControlManager::Action::Uninstall) {
+            m_observeTimer.stop();
+            start(ProcessMode::Desktop);
+          }
+        } else {
+          setProcessState(ProcessState::Started);
+          observeCore();
+          m_observeTimer.start();
+        }
+      }
+  );
+}
+
+bool CoreProcess::fullControlEnabled()
+{
+#ifdef Q_OS_WIN
+  return Settings::value(Settings::Gui::FullControlEnabled).toBool();
+#else
+  return false;
+#endif
+}
+
+void CoreProcess::observeCore()
+{
+  if (m_coreIpcClient)
+    return;
+  m_coreIpcClient = new ipc::CoreIpcClient(this);
+  connect(m_coreIpcClient, &ipc::CoreIpcClient::commandReceived, this, &CoreProcess::onCoreIpcMessageReceived);
+  const auto disconnected = [this, client = m_coreIpcClient] {
+    setConnectionState(ConnectionState::Disconnected);
+    client->deleteLater();
+    if (m_coreIpcClient == client)
+      m_coreIpcClient = nullptr;
+  };
+  connect(m_coreIpcClient, &ipc::CoreIpcClient::connectionFailed, this, disconnected);
+  connect(m_coreIpcClient, &ipc::CoreIpcClient::serverShutdown, this, disconnected);
+  connect(m_coreIpcClient, &ipc::CoreIpcClient::versionMismatch, this, [this] {
+    Q_EMIT fullControlError(tr(
+        "The full control component version differs from the GUI. Use Enable / update component in Settings > Advanced."
+    ));
+    m_observeTimer.stop();
+    // Do not send stop or configuration commands to an older protected core.
+    m_coreIpcClient->disconnectFromServer();
+    m_coreIpcClient->deleteLater();
+    m_coreIpcClient = nullptr;
+    setConnectionState(ConnectionState::Disconnected);
+  });
+  m_coreIpcClient->connectToServer();
+}
+
+void CoreProcess::startFullControl()
+{
+  if (m_fullControlTransition || m_fullControl.busy())
+    return;
+  m_fullControlTransition = true;
+  connect(
+      &m_fullControl, &FullControlManager::statusChanged, this,
+      [this] {
+        QTimer::singleShot(0, this, [this] {
+          m_fullControlTransition = false;
+          const auto &status = m_fullControl.status();
+          if (!status.valid || !status.installed) {
+            Q_EMIT fullControlError(
+                status.error.isEmpty() ? tr("The full control component is not installed.") : status.error
+            );
+            return;
+          }
+          if (status.running) {
+            setProcessState(ProcessState::Started);
+            observeCore();
+            m_observeTimer.start();
+          } else {
+            manageFullControl(FullControlManager::Action::Start);
+          }
+        });
+      },
+      Qt::SingleShotConnection
+  );
+  m_fullControl.refresh();
+}
+
+void CoreProcess::manageFullControl(FullControlManager::Action action)
+{
+  using Action = FullControlManager::Action;
+  if (m_fullControlTransition || m_fullControl.busy())
+    return;
+  if (action == Action::Install || action == Action::Apply) {
+    if (m_mode == Settings::CoreMode::None) {
+      Q_EMIT fullControlError(tr("Choose a client or server connection before enabling full control."));
+      return;
+    }
+    if (m_mode == Settings::CoreMode::Server &&
+        (Settings::value(Settings::Server::ExternalConfig).toBool() || !persistServerConfig(true).first)) {
+      Q_EMIT fullControlError(tr("Full control requires the built-in server configuration to be saved successfully."));
+      return;
+    }
+    // Only flush settings already accepted by the user. SettingsDialog never invokes accept here.
+    Settings::save(false);
+  }
+  m_fullControlTransition = true;
+  m_wasFullControl = fullControlEnabled();
+  if (action == Action::Install && !m_wasFullControl && m_process && m_process->state() != QProcess::NotRunning) {
+    m_restoreDesktopAfterFailure = true;
+    connect(
+        m_process, &QProcess::finished, this, [this, action](int, QProcess::ExitStatus) { m_fullControl.run(action); },
+        Qt::SingleShotConnection
+    );
+    stop(ProcessMode::Desktop);
+  } else {
+    m_fullControl.run(action);
+  }
 }
 
 void CoreProcess::onProcessReadyReadStandardOutput()
@@ -207,6 +362,8 @@ void CoreProcess::onProcessFinished(int exitCode, QProcess::ExitStatus)
 
 void CoreProcess::applyLogLevel()
 {
+  if (fullControlEnabled())
+    return;
   const auto processMode = Settings::value(Settings::Core::ProcessMode).value<Settings::ProcessMode>();
   if (processMode == ProcessMode::Service) {
     qDebug() << "setting daemon log level:" << Settings::logLevelText();
@@ -380,6 +537,12 @@ void CoreProcess::handleLogLines(const QString &text)
 
 void CoreProcess::start(std::optional<ProcessMode> processModeOption)
 {
+  if (fullControlEnabled()) {
+    startFullControl();
+    return;
+  }
+  if (m_fullControlTransition)
+    return;
   if (m_processState == ProcessState::Started) {
     qCritical("not starting core process, already started");
     return;
@@ -501,6 +664,10 @@ void CoreProcess::start(std::optional<ProcessMode> processModeOption)
 
 void CoreProcess::stop(std::optional<ProcessMode> processModeOption)
 {
+  if (fullControlEnabled()) {
+    manageFullControl(FullControlManager::Action::Stop);
+    return;
+  }
   QMutexLocker locker(&m_processMutex);
 
   const auto currentMode = Settings::value(Settings::Core::ProcessMode).value<ProcessMode>();
@@ -535,6 +702,12 @@ void CoreProcess::stop(std::optional<ProcessMode> processModeOption)
 
 void CoreProcess::restart()
 {
+  if (fullControlEnabled()) {
+    manageFullControl(FullControlManager::Action::Apply);
+    return;
+  }
+  if (m_fullControlTransition)
+    return;
   qDebug("restarting core process");
 
   const auto processMode = Settings::value(Settings::Core::ProcessMode).value<ProcessMode>();
@@ -574,6 +747,10 @@ void CoreProcess::restart()
 
 void CoreProcess::cleanup()
 {
+  m_shutdown = true;
+  m_observeTimer.stop();
+  if (fullControlEnabled())
+    return;
   qInfo("cleaning up core process");
 
   const auto isDesktop = Settings::value(Settings::Core::ProcessMode).value<ProcessMode>() == ProcessMode::Desktop;
@@ -583,13 +760,15 @@ void CoreProcess::cleanup()
   }
 }
 
-QPair<bool, QString> CoreProcess::persistServerConfig() const
+QPair<bool, QString> CoreProcess::persistServerConfig(bool fullControl) const
 {
   if (Settings::value(Settings::Server::ExternalConfig).toBool()) {
     return {Settings::isServerConfigFileReadable(), Settings::value(Settings::Server::ExternalConfigFile).toString()};
   }
 
-  const auto configFilePath = Settings::defaultValue(Settings::Server::ExternalConfigFile).toString();
+  const auto configFilePath =
+      fullControl ? QFileInfo(Settings::settingsFile()).absolutePath() + QStringLiteral("/deskflow-server.conf")
+                  : Settings::defaultValue(Settings::Server::ExternalConfigFile).toString();
   QFile configFile(configFilePath);
   if (!configFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
     qWarning() << "failed to open core config file for write:" << configFilePath;
@@ -598,7 +777,7 @@ QPair<bool, QString> CoreProcess::persistServerConfig() const
 
   m_serverConfig.save(configFile);
   configFile.close();
-  return {Settings::isServerConfigFileReadable(), configFile.fileName()};
+  return {configFile.open(QIODevice::ReadOnly), configFile.fileName()};
 }
 
 void CoreProcess::setConnectionState(ConnectionState state)
@@ -705,6 +884,28 @@ void CoreProcess::updateConnectionEndpoints(const QString &json)
     }
   }
   setConnectionEndpoints(endpoints);
+  if (!document.isArray()) {
+    setConnectionState(ConnectionState::Disconnected);
+    if (m_mode == Settings::CoreMode::Server)
+      Q_EMIT connectedClientsChanged({});
+    return;
+  }
+  if (document.isArray()) {
+    if (!endpoints.isEmpty())
+      setConnectionState(ConnectionState::Connected);
+    else if (m_mode == Settings::CoreMode::Server)
+      setConnectionState(ConnectionState::Listening);
+    else
+      setConnectionState(ConnectionState::Disconnected);
+    if (m_mode == Settings::CoreMode::Server) {
+      QStringList clients;
+      for (const auto &endpoint : endpoints) {
+        if (!endpoint.name.isEmpty() && !clients.contains(endpoint.name))
+          clients.append(endpoint.name);
+      }
+      Q_EMIT connectedClientsChanged(clients);
+    }
+  }
 }
 
 void CoreProcess::cancelFileTransfer()
@@ -758,6 +959,8 @@ void CoreProcess::setupDaemonLogTail(const QString &logPath)
 
 void CoreProcess::clearSettings()
 {
+  if (fullControlEnabled())
+    return;
   const auto processMode = Settings::value(Settings::Core::ProcessMode).value<ProcessMode>();
   if (processMode == ProcessMode::Desktop) {
     qDebug("no core settings to clear in desktop mode");
@@ -775,6 +978,10 @@ void CoreProcess::clearSettings()
 
 void CoreProcess::retryDaemon()
 {
+  if (fullControlEnabled()) {
+    m_fullControl.refresh();
+    return;
+  }
   m_daemonIpcClient->connectToServer();
 }
 

@@ -11,6 +11,7 @@
 #include "common/Settings.h"
 #include "gui/FileTail.h"
 #include "gui/config/ServerConfig.h"
+#include "gui/core/FullControlManager.h"
 
 #include <QList>
 #include <QMutex>
@@ -57,6 +58,11 @@ public:
   void clearSettings();
   void retryDaemon();
   void cancelFileTransfer();
+  void manageFullControl(FullControlManager::Action action);
+  FullControlManager *fullControlManager()
+  {
+    return &m_fullControl;
+  }
 
   // getters
   Settings::CoreMode mode() const
@@ -110,6 +116,7 @@ Q_SIGNALS:
   void missingKeyboardLayouts(const QString &layouts);
   void fileTransferStatusChanged(const QString &statusJson);
   void connectionEndpointsChanged();
+  void fullControlError(const QString &message);
 
 private Q_SLOTS:
   void onProcessFinished(int exitCode, QProcess::ExitStatus);
@@ -123,7 +130,7 @@ private:
   void startProcessFromDaemon();
   void stopForegroundProcess();
   void stopProcessFromDaemon();
-  QPair<bool, QString> persistServerConfig() const;
+  QPair<bool, QString> persistServerConfig(bool fullControl = false) const;
   void setConnectionState(ConnectionState state);
   void setConnectionEndpoints(const QList<ConnectionEndpoint> &endpoints);
   void updateConnectionEndpoints(const QString &json);
@@ -133,6 +140,9 @@ private:
   QString correctedAddress(const QString &address) const;
   void setupDaemonLogTail(const QString &logPath);
   void checkExistingProcess();
+  void observeCore();
+  void startFullControl();
+  static bool fullControlEnabled();
   static QString makeQuotedArgs(const QString &app, const QStringList &args);
   static QString processModeToString(const Settings::ProcessMode mode);
   static QString processStateToString(const CoreProcess::ProcessState state);
@@ -153,6 +163,12 @@ private:
   FileTail *m_daemonFileTail = nullptr;
   QProcess *m_process = nullptr;
   QString m_appPath;
+  FullControlManager m_fullControl;
+  QTimer m_observeTimer;
+  bool m_fullControlTransition = false;
+  bool m_restoreDesktopAfterFailure = false;
+  bool m_wasFullControl = false;
+  bool m_shutdown = false;
 };
 
 } // namespace deskflow::gui

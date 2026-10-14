@@ -156,6 +156,106 @@ void FileTransferSessionTests::filesDirectoriesUnicodeAndReverseCopy()
   QCOMPARE(read(rootsA[0] + '/' + name), contents);
 }
 
+void FileTransferSessionTests::deferredPublicationRetainsCacheLease()
+{
+  QTemporaryDir source;
+  QTemporaryDir cache;
+  QVERIFY(write(source.filePath("file"), "deferred publication"));
+  QStringList roots;
+  std::shared_ptr<QLockFile> lease;
+  bool ready = false;
+  FileTransferSession *sender = nullptr;
+  FileTransferSession::Callbacks callbacks;
+  callbacks.send = [&](const QByteArray &packet) { sender->receive(packet); };
+  callbacks.publishWithLease = [&](const QStringList &paths, std::shared_ptr<QLockFile> lock) {
+    roots = paths;
+    lease = std::move(lock);
+  };
+  callbacks.progress = [&](const auto &update) { ready |= update.state == State::Ready; };
+  FileTransferSession receiver(std::move(callbacks), cache.path());
+  FileTransferSession sourceSession(
+      {[&](const QByteArray &packet) { receiver.receive(packet); }}, source.filePath("cache")
+  );
+  sender = &sourceSession;
+  sourceSession.startSend({source.filePath("file")});
+  QVERIFY(spin([&] { return ready; }, sourceSession, &receiver));
+  QVERIFY(lease != nullptr);
+  QVERIFY(!roots.isEmpty());
+  QVERIFY_EXCEPTION_THROWN(deskflow::FileTransferCache::clean(cache.path()), std::runtime_error);
+  QCOMPARE(read(roots[0]), QByteArray("deferred publication"));
+  lease.reset();
+  QCOMPARE(deskflow::FileTransferCache::clean(cache.path()).removedBatches, quint32(1));
+}
+
+void FileTransferSessionTests::cancelledGenerationCannotClearNextReceive()
+{
+  QTemporaryDir source;
+  QTemporaryDir cache;
+  QVERIFY(write(source.filePath("next"), "new generation"));
+  QList<QByteArray> frames;
+  FileTransferSession sender({[&](const QByteArray &frame) { frames.push_back(frame); }}, source.path());
+  sender.startSend({source.filePath("next")});
+  QVERIFY(spin([&] { return frames.size() == 5; }, sender));
+
+  quint64 generation = 1;
+  bool active = true;
+  bool receiving = false;
+  bool ready = false;
+  bool oldCancellationReachedNewBatch = false;
+  bool oldAbortReachedNewBatch = false;
+  bool currentCancellationDelivered = false;
+  QStringList published;
+  std::shared_ptr<QLockFile> lease;
+  std::atomic_uint wakes{0};
+  FileTransferSession::Callbacks callbacks;
+  callbacks.acceptGeneration = [&](quint64 eventGeneration) { return eventGeneration == generation; };
+  callbacks.send = [&](const QByteArray &frame) {
+    oldAbortReachedNewBatch |= generation == 3 && quint8(frame[5]) == 7;
+  };
+  callbacks.wake = [&] { ++wakes; };
+  callbacks.publishWithLease = [&](const QStringList &paths, std::shared_ptr<QLockFile> guard) {
+    if (active) {
+      published = paths;
+      lease = std::move(guard);
+    }
+  };
+  callbacks.progress = [&](const auto &update) {
+    receiving |= update.state == State::Receiving;
+    ready |= update.state == State::Ready;
+    if (update.state == State::Cancelled || update.state == State::Failed) {
+      active = false;
+      lease.reset();
+      oldCancellationReachedNewBatch |= generation == 3;
+      currentCancellationDelivered |= generation == 4;
+    }
+  };
+  FileTransferSession receiver(std::move(callbacks), cache.path());
+  receiver.receive(beginWithSize(0), generation);
+  QVERIFY(spin([&] { return receiving; }, receiver));
+  generation = 2;
+  wakes = 0;
+  receiver.cancel(QStringLiteral("Cancel previous generation"), generation);
+  QTRY_VERIFY_WITH_TIMEOUT(wakes.load() != 0, 2000);
+
+  // Like one transport.take(): Cancel g2 is queued, then Begin g3 arrives
+  // before pump. Session's internal generation is shared by those commands.
+  generation = 3;
+  active = true;
+  for (const auto &frame : frames)
+    receiver.receive(frame, generation);
+  QVERIFY(spin([&] { return ready; }, receiver));
+  QVERIFY(!oldCancellationReachedNewBatch);
+  QVERIFY(!oldAbortReachedNewBatch);
+  QCOMPARE(published.size(), 1);
+  QCOMPARE(read(published[0]), QByteArray("new generation"));
+  QVERIFY(lease != nullptr);
+
+  generation = 4;
+  receiver.cancel(QStringLiteral("Cancel current generation"), generation);
+  QVERIFY(spin([&] { return currentCancellationDelivered; }, receiver));
+  QVERIFY(lease == nullptr);
+}
+
 void FileTransferSessionTests::checksumFailureDoesNotPublish()
 {
   QTemporaryDir source;

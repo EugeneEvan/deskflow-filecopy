@@ -2,6 +2,13 @@
 # SPDX-License-Identifier: MIT
 
 create_test(
+  NAME FullControlManagerTests
+  DEPENDS gui
+  SOURCE FullControlManagerTests.cpp
+  WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/gui"
+)
+
+create_test(
   NAME CoreProcessEndpointsTests
   DEPENDS gui
   SOURCE CoreProcessEndpointsTests.cpp

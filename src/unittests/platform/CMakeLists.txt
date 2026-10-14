@@ -3,6 +3,25 @@
 
 if (WIN32)
   create_test(
+    NAME MSWindowsProcessIsolationTests
+    DEPENDS platform
+    LIBS base arch app
+    SOURCE MSWindowsProcessIsolationTests.cpp
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/platform"
+  )
+  add_test(
+    NAME FullControlManagerScriptTests
+    COMMAND powershell.exe -NoProfile -ExecutionPolicy Bypass -File
+      "${CMAKE_CURRENT_SOURCE_DIR}/FullControlManagerTests.ps1"
+  )
+  create_test(
+    NAME MSWindowsClipboardFileConverterTests
+    DEPENDS platform
+    LIBS base arch app
+    SOURCE MSWindowsClipboardFileConverterTests.cpp
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/platform"
+  )
+  create_test(
     NAME MSWindowsClipboardImageTests
     DEPENDS platform
     LIBS base arch app

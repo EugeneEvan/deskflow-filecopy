@@ -47,6 +47,10 @@ add_library(${lib_name} STATIC ${PLATFORM_CODE}
   FileTransferSession.h
   FileTransferBridge.cpp
   FileTransferBridge.h
+  FileAgentProtocol.cpp
+  FileAgentProtocol.h
+  WindowsFileAgentTransport.cpp
+  WindowsFileAgentTransport.h
   IApp.h
   IClient.h
   IClipboard.cpp
@@ -103,6 +107,10 @@ target_link_libraries(${lib_name}
   PRIVATE
     platform
 )
+
+if(WIN32)
+  target_link_libraries(${lib_name} PRIVATE Wtsapi32 Userenv)
+endif()
 
 if(UNIX AND NOT APPLE)
   target_link_libraries(${lib_name} PRIVATE server ${LIBXKBREGISTRY_LINK_LIBRARIES})

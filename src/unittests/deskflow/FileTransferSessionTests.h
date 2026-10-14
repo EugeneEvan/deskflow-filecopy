@@ -34,6 +34,8 @@ private Q_SLOTS:
   void completedBatchAbortBeforePumpPreventsPublication();
   void oldCompletedBatchAbortCannotInvalidateNextBatch();
   void disconnectKeepsPublishedFiles();
+  void deferredPublicationRetainsCacheLease();
+  void cancelledGenerationCannotClearNextReceive();
   void queuedCompletionCannotOverwriteNewClipboard();
   void batchLimitIsRejectedBeforeCreatingFiles();
   void simultaneousCopiesCancelBothDirections();

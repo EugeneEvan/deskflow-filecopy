@@ -15,8 +15,11 @@
 
 ServerProxyFileTransfer::ServerProxyFileTransfer(Client *client, deskflow::IStream *stream, IEventQueue *events)
     : ServerProxy1_8(client, stream, events),
-      m_transfer(events, stream, [client](const QStringList &paths) { return client->publishTransferredFiles(paths); })
+      m_transfer(events, stream, [client](const QStringList &paths, bool published) {
+        return client->publishTransferredFiles(paths, published);
+      })
 {
+  m_transfer.setReadyCallback([this] { requestFiles(); });
 }
 
 void ServerProxyFileTransfer::onOptionsChanged(const OptionsList &options)
@@ -31,7 +34,13 @@ void ServerProxyFileTransfer::onOptionsChanged(const OptionsList &options)
     onOptionsReset();
     return;
   }
-  if (!m_requested) {
+  m_advertised = true;
+  requestFiles();
+}
+
+void ServerProxyFileTransfer::requestFiles()
+{
+  if (m_advertised && m_transfer.available() && !m_requested) {
     m_requested = true;
     ProtocolUtil::writef(getStream(), kMsgCFileCopyHello);
   }
@@ -39,6 +48,7 @@ void ServerProxyFileTransfer::onOptionsChanged(const OptionsList &options)
 
 void ServerProxyFileTransfer::onOptionsReset()
 {
+  m_advertised = false;
   m_requested = false;
   m_negotiated = false;
   m_transfer.setNegotiated(false);
@@ -47,7 +57,7 @@ void ServerProxyFileTransfer::onOptionsReset()
 ServerProxy::ConnectionResult ServerProxyFileTransfer::parseMessage(const uint8_t *code)
 {
   if (std::memcmp(code, kMsgCFileCopyAck, 4) == 0) {
-    if (!m_requested || m_negotiated || getCurrentMessageSize() != 4 || !deskflow::FileTransferBridge::enabled()) {
+    if (!m_requested || m_negotiated || getCurrentMessageSize() != 4 || !m_transfer.available()) {
       throw BadClientException();
     }
     m_negotiated = true;
@@ -89,5 +99,5 @@ void ServerProxyFileTransfer::onRemoteClipboardChanged(ClipboardID id)
 
 bool ServerProxyFileTransfer::canTransferFiles() const
 {
-  return m_negotiated && deskflow::FileTransferBridge::enabled();
+  return m_negotiated && m_transfer.available();
 }

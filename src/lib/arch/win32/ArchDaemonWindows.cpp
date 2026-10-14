@@ -61,8 +61,9 @@ int ArchDaemonWindows::daemonize(DaemonFunc const &func)
   m_daemonFunc = func;
 
   // construct the service entry
+  auto serviceName = QString(kAppName).toStdWString();
   SERVICE_TABLE_ENTRY entry[2];
-  entry[0].lpServiceName = const_cast<wchar_t *>(QString(kAppName).toStdWString().c_str());
+  entry[0].lpServiceName = serviceName.data();
   entry[0].lpServiceProc = &ArchDaemonWindows::serviceMainEntry;
   entry[1].lpServiceName = nullptr;
   entry[1].lpServiceProc = nullptr;

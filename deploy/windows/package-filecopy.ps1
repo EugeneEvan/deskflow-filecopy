@@ -14,7 +14,7 @@ OutputDirectory must be outside the source tree. Each run creates a fresh stage.
   -CrtDirectory F:/deskflow-tools/msvc/VC/Redist/MSVC/14.44.35112/x64/Microsoft.VC143.CRT `
   -Dumpbin F:/deskflow-tools/msvc/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/dumpbin.exe `
   -Iscc F:/deskflow-tools/innosetup-6.7.3/ISCC.exe -OutputDirectory F:/deskflow-releases `
-  -Version 0.3.5 -ProjectUrl https://github.com/EugeneEvan/deskflow-filecopy
+  -Version 0.4.0 -ProjectUrl https://github.com/EugeneEvan/deskflow-filecopy
 #>
 [CmdletBinding()]
 param(
@@ -65,10 +65,11 @@ function Write-Utf8([string]$Path, [string]$Content) {
     [IO.File]::WriteAllText($Path, $Content, [Text.UTF8Encoding]::new($false))
 }
 
-foreach ($name in @('deskflow.exe', 'deskflow-core.exe', 'deskflow-daemon.exe')) {
+foreach ($name in @('deskflow.exe', 'deskflow-core.exe', 'deskflow-daemon.exe', 'deskflow-file-agent.exe')) {
     Copy-PackageFile (Join-Path $BuildDirectory ('bin\' + $name)) (Join-Path $payload $name)
 }
 Copy-PackageFile $IconPath (Join-Path $payload 'deskflow-filecopy.ico')
+Copy-PackageFile (Join-Path $PSScriptRoot 'full-control-manager.ps1') (Join-Path $payload 'full-control-manager.ps1')
 $pluginRoot = Join-Path $DependenciesDirectory 'Qt6\plugins'
 Copy-PackageFile (Join-Path $pluginRoot 'platforms\qwindows.dll') (Join-Path $payload 'plugins\platforms\qwindows.dll')
 foreach ($folder in @('styles', 'iconengines', 'imageformats', 'networkinformation', 'tls')) {
@@ -161,6 +162,16 @@ It does not install a service, launch the app after installation, or close a run
 Close other Deskflow versions yourself before starting this version. Desktop mode
 cannot control the sign-in screen or secure UAC desktop. Allow Deskflow in Windows
 Firewall on your trusted private network when Windows requests it.
+
+Optional full control is available under Preferences > Advanced. First connect and
+trust your peer in Desktop mode, then install the full-control component with Windows
+administrator approval. Its protected directory is at the root of the app's drive:
+Deskflow FileCopy Control. A SYSTEM service handles input while a separate signed-in
+user agent handles files and the cache. UAC and the secure desktop remain enabled.
+Apply saved preferences to update the administrator-approved service configuration;
+update the component after upgrading this app. External server configurations and
+custom enter/leave commands are not imported. Disable full control before uninstalling
+the ordinary app. Disabling removes the service, preserving settings and user files.
 
 The portable ZIP uses the same files; extract it before running deskflow.exe.
 Settings and TLS identity are stored under the application's settings directory.

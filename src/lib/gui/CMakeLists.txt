@@ -47,6 +47,8 @@ add_library(${target} STATIC
   config/ServerConfig.h
   core/CoreProcess.cpp
   core/CoreProcess.h
+  core/FullControlManager.cpp
+  core/FullControlManager.h
   core/NetworkMonitor.cpp
   core/NetworkMonitor.h
   dialogs/AboutDialog.cpp
@@ -139,5 +141,5 @@ target_link_libraries(${target}
 )
 
 if(WIN32)
-  target_link_libraries(${target} PRIVATE ole32 shell32)
+  target_link_libraries(${target} PRIVATE ole32 shell32 advapi32)
 endif()

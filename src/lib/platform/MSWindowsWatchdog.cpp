@@ -25,6 +25,8 @@
 #include <shlobj.h>
 #include <tchar.h>
 
+#include <QCoreApplication>
+#include <QDir>
 #include <QStringDecoder>
 
 //
@@ -66,32 +68,44 @@ HANDLE openProcessForKill(const PROCESSENTRY32 &entry)
 // MSWindowsWatchdog
 //
 
-MSWindowsWatchdog::MSWindowsWatchdog(bool foreground, FileLogOutputter &fileLogOutputter)
+MSWindowsWatchdog::MSWindowsWatchdog(bool foreground, FileLogOutputter &fileLogOutputter, bool fullControl)
     : m_fileLogOutputter(fileLogOutputter),
-      m_foreground(foreground)
+      m_foreground(foreground),
+      m_fullControl(fullControl)
 {
   initSasFunc();
-  initOutputReadPipe();
+  if (!m_fullControl) {
+    initOutputReadPipe();
+  }
 }
 
 void MSWindowsWatchdog::startAsync()
 {
   m_mainThread = std::make_unique<Thread>(new TMethodJob(this, &MSWindowsWatchdog::mainLoop, nullptr));
-  m_outputThread = std::make_unique<Thread>(new TMethodJob(this, &MSWindowsWatchdog::outputLoop, nullptr));
+  if (!m_fullControl) {
+    m_outputThread = std::make_unique<Thread>(new TMethodJob(this, &MSWindowsWatchdog::outputLoop, nullptr));
+  }
   m_sasThread = std::make_unique<Thread>(new TMethodJob(this, &MSWindowsWatchdog::sasLoop, nullptr));
 }
 
 void MSWindowsWatchdog::stop()
 {
-  const auto kThreadWaitSeconds = 5;
+  // Isolated core termination waits up to 5 seconds. Allow an in-flight start
+  // and cleanup to finish before the service can report itself stopped.
+  const auto kThreadWaitSeconds = m_fullControl ? 15 : 5;
 
   m_running = false;
 
-  if (!m_mainThread->wait(kThreadWaitSeconds)) {
+  while (!m_mainThread->wait(kThreadWaitSeconds)) {
     LOG_WARN("could not stop main thread");
+    if (!m_fullControl) {
+      break;
+    }
+    // Keep SCM in StopPending rather than detach a live SYSTEM core.
+    LOG_CRIT("full-control is still waiting for its isolated core to exit");
   }
 
-  if (!m_outputThread->wait(kThreadWaitSeconds)) {
+  if (m_outputThread && !m_outputThread->wait(kThreadWaitSeconds)) {
     LOG_WARN("could not stop output thread");
   }
 
@@ -220,7 +234,7 @@ void MSWindowsWatchdog::mainLoop(const void *)
     case StopPending: {
       LOG_DEBUG("watchdog stopping current process");
       if (m_process != nullptr) {
-        m_process->shutdown();
+        shutdownProcess(m_process->info().hProcess, m_process->info().dwProcessId);
         m_process.reset();
       } else {
         LOG_WARN("no process to stop");
@@ -242,7 +256,7 @@ void MSWindowsWatchdog::mainLoop(const void *)
 
   if (m_process != nullptr) {
     LOG_DEBUG("terminating running process on exit");
-    m_process->shutdown();
+    shutdownProcess(m_process->info().hProcess, m_process->info().dwProcessId);
     m_process.reset();
   }
 
@@ -268,7 +282,7 @@ void MSWindowsWatchdog::startProcess()
 
   if (m_process != nullptr) {
     LOG_DEBUG("closing existing process to make way for new one");
-    m_process->shutdown();
+    shutdownProcess(m_process->info().hProcess, m_process->info().dwProcessId);
     m_process.reset();
   }
 
@@ -285,13 +299,14 @@ void MSWindowsWatchdog::startProcess()
 
     SECURITY_ATTRIBUTES sa;
     ZeroMemory(&sa, sizeof(SECURITY_ATTRIBUTES));
+    sa.nLength = sizeof(sa);
     HANDLE userToken = getUserToken(&sa, m_elevateProcess);
 
     // set UIAccess to fix Windows 8 GUI interaction
     DWORD uiAccess = 1;
     SetTokenInformation(userToken, TokenUIAccess, &uiAccess, sizeof(DWORD));
 
-    createRet = m_process->startAsUser(userToken, &sa);
+    createRet = m_process->startAsUser(userToken, &sa, !m_fullControl);
   }
 
   if (!createRet) {
@@ -326,7 +341,7 @@ void MSWindowsWatchdog::setProcessConfig(const std::string_view &command, bool e
   std::scoped_lock lock{m_processStateMutex};
 
   LOG_DEBUG("setting watchdog process config");
-  m_command = std::wstring(command.begin(), command.end());
+  m_command = QString::fromUtf8(command.data(), static_cast<qsizetype>(command.size())).toStdWString();
   m_elevateProcess = elevate;
 
   if (m_command.empty()) {
@@ -379,7 +394,27 @@ void MSWindowsWatchdog::outputLoop(const void *)
   }
 }
 
-void MSWindowsWatchdog::shutdownExistingProcesses()
+void MSWindowsWatchdog::shutdownProcess(HANDLE process, DWORD pid) const
+{
+  for (;;) {
+    try {
+      deskflow::platform::MSWindowsProcess::shutdown(
+          process, pid, m_fullControl ? 5 : deskflow::platform::kDefaultShutdownTimeout, m_fullControl
+      );
+      return;
+    } catch (const std::exception &e) {
+      if (!m_fullControl) {
+        throw;
+      }
+      // A failed termination must neither start a second SYSTEM core nor let
+      // the service report Stopped. Each confirmation wait remains bounded.
+      LOG_CRIT("full-control core %lu has not exited: %s; retrying termination", pid, e.what());
+      Arch::sleep(1);
+    }
+  }
+}
+
+void MSWindowsWatchdog::shutdownExistingProcesses() const
 {
   LOG_DEBUG("shutting down any existing processes");
 
@@ -407,8 +442,20 @@ void MSWindowsWatchdog::shutdownExistingProcesses()
   while (gotEntry) {
 
     if (HANDLE handle = openProcessForKill(entry); handle != nullptr) {
+      if (m_fullControl) {
+        wchar_t path[32768];
+        DWORD length = static_cast<DWORD>(std::size(path));
+        const auto expected =
+            QDir::toNativeSeparators(QCoreApplication::applicationDirPath() + QStringLiteral("/deskflow-core.exe"));
+        if (!QueryFullProcessImageNameW(handle, 0, path, &length) ||
+            QString::fromWCharArray(path, static_cast<qsizetype>(length)).compare(expected, Qt::CaseInsensitive) != 0) {
+          CloseHandle(handle);
+          gotEntry = Process32Next(snapshot.get(), &entry);
+          continue;
+        }
+      }
       LOG_DEBUG("shutting down process, name=%s, pid=%d", entry.szExeFile, entry.th32ProcessID);
-      deskflow::platform::MSWindowsProcess::shutdown(handle, entry.th32ProcessID);
+      shutdownProcess(handle, entry.th32ProcessID);
       CloseHandle(handle);
     }
 
@@ -496,7 +543,7 @@ void MSWindowsWatchdog::initSasFunc()
 {
   // the SendSAS function is used to send a sas (secure attention sequence) to the
   // winlogon process. this is used to switch to the login screen.
-  HINSTANCE sasLib = LoadLibrary(L"sas.dll");
+  HINSTANCE sasLib = LoadLibraryExW(L"sas.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
   if (!sasLib) {
     LOG_ERR("could not load sas.dll");
     throw std::runtime_error(windowsErrorToString(GetLastError()));

@@ -25,7 +25,9 @@ protected:
   void onRemoteClipboardChanged(ClipboardID id) override;
 
 private:
+  void requestFiles();
   deskflow::FileTransferBridge m_transfer;
+  bool m_advertised = false;
   bool m_requested = false;
   bool m_negotiated = false;
 };

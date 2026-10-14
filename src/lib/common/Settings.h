@@ -80,6 +80,7 @@ public:
   {
     inline static const auto Autohide = QStringLiteral("gui/autoHide");
     inline static const auto AutoStartCore = QStringLiteral("gui/startCoreWithGui");
+    inline static const auto FullControlEnabled = QStringLiteral("gui/fullControlEnabled");
     inline static const auto AutoUpdateCheck = QStringLiteral("gui/enableUpdateCheck");
     inline static const auto UpdateCheckUrl = QStringLiteral("gui/updateCheckUrl");
     inline static const auto CloseReminder = QStringLiteral("gui/closeReminder");
@@ -295,6 +296,7 @@ private:
     , Log::GuiDebug
     , Gui::Autohide
     , Gui::AutoStartCore
+    , Gui::FullControlEnabled
     , Gui::AutoUpdateCheck
     , Gui::UpdateCheckUrl
     , Gui::CloseReminder
@@ -332,6 +334,7 @@ private:
   inline static const QStringList m_defaultFalseValues = {
       Gui::Autohide
     , Gui::AutoStartCore
+    , Gui::FullControlEnabled
     , Gui::ShownFirstConnectedMessage
     , Gui::ShownServerFirstStartMessage
     , Gui::ShowVersionInTitle

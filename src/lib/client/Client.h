@@ -176,7 +176,7 @@ public:
   void enter(int32_t xAbs, int32_t yAbs, uint32_t seqNum, KeyModifierMask mask, bool forScreensaver) override;
   bool leave() override;
   void setClipboard(ClipboardID, const IClipboard *) override;
-  bool publishTransferredFiles(const QStringList &paths);
+  bool publishTransferredFiles(const QStringList &paths, bool alreadyPublished = false);
   void grabClipboard(ClipboardID) override;
   void setClipboardDirty(ClipboardID, bool) override;
   void keyDown(KeyID, KeyModifierMask, KeyButton, const std::string &) override;

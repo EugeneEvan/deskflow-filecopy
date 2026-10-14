@@ -18,10 +18,14 @@ ClientProxyFileTransfer::ClientProxyFileTransfer(
     const std::string &name, deskflow::IStream *stream, Server *server, IEventQueue *events
 )
     : ClientProxy1_8(name, stream, server, events),
-      m_transfer(events, stream, [this, server](const QStringList &paths) {
-        return server->publishTransferredFiles(this, paths);
+      m_transfer(events, stream, [this, server](const QStringList &paths, bool published) {
+        return server->publishTransferredFiles(this, paths, published);
       })
 {
+  m_transfer.setReadyCallback([this] {
+    if (m_haveOptions)
+      setOptions(m_lastOptions);
+  });
 }
 
 void ClientProxyFileTransfer::setOptions(const OptionsList &options)
@@ -30,6 +34,8 @@ void ClientProxyFileTransfer::setOptions(const OptionsList &options)
     ClientProxy1_8::setOptions(options);
     return;
   }
+  m_lastOptions = options;
+  m_haveOptions = true;
   OptionsList advertised;
   for (size_t i = 0; i < options.size(); i += 2) {
     if (options[i] != kOptionFileCopy) {
@@ -37,7 +43,7 @@ void ClientProxyFileTransfer::setOptions(const OptionsList &options)
       advertised.push_back(options[i + 1]);
     }
   }
-  m_advertised = deskflow::FileTransferBridge::enabled();
+  m_advertised = m_transfer.available();
   if (m_advertised) {
     advertised.push_back(kOptionFileCopy);
     advertised.push_back(kFileCopyCapability);
@@ -50,6 +56,7 @@ void ClientProxyFileTransfer::setOptions(const OptionsList &options)
 
 void ClientProxyFileTransfer::resetOptions()
 {
+  m_haveOptions = false;
   m_advertised = false;
   m_negotiated = false;
   m_transfer.setNegotiated(false);
@@ -59,7 +66,7 @@ void ClientProxyFileTransfer::resetOptions()
 bool ClientProxyFileTransfer::parseMessage(const uint8_t *code)
 {
   if (std::memcmp(code, kMsgCFileCopyHello, 4) == 0) {
-    if (!m_advertised || m_negotiated || getCurrentMessageSize() != 4 || !deskflow::FileTransferBridge::enabled()) {
+    if (!m_advertised || m_negotiated || getCurrentMessageSize() != 4 || !m_transfer.available()) {
       throw BadClientException();
     }
     ProtocolUtil::writef(getStream(), kMsgCFileCopyAck);
@@ -113,7 +120,7 @@ void ClientProxyFileTransfer::onRemoteClipboardChanged(ClipboardID id)
 
 bool ClientProxyFileTransfer::canTransferFiles() const
 {
-  return m_negotiated && deskflow::FileTransferBridge::enabled();
+  return m_negotiated && m_transfer.available();
 }
 
 bool ClientProxyFileTransfer::hasActiveFileTransfer() const

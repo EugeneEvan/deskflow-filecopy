@@ -15,6 +15,7 @@ private Q_SLOTS:
   void initTestCase();
   void cleanupTestCase();
   void snapshotSupportsBothFamilies();
+  void snapshotRestoresConnectionAndClientCount();
   void endpointsBeforeConnectedArePreserved();
   void reconnectReplacesOldEndpoints();
   void disconnectClearsAddresses();

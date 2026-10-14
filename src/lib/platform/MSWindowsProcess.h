@@ -24,8 +24,8 @@ public:
   ~MSWindowsProcess();
 
   BOOL startInForeground();
-  BOOL startAsUser(HANDLE userToken, LPSECURITY_ATTRIBUTES sa);
-  void shutdown(int timeout = kDefaultShutdownTimeout);
+  BOOL startAsUser(HANDLE userToken, LPSECURITY_ATTRIBUTES sa, bool inheritHandles = true);
+  void shutdown(int timeout = kDefaultShutdownTimeout, bool isolated = false);
   DWORD waitForExit();
   void createPipes();
   std::wstring readStdOutput();
@@ -36,7 +36,7 @@ public:
     return m_info;
   }
 
-  static void shutdown(HANDLE handle, DWORD pid, int timeout = kDefaultShutdownTimeout);
+  static void shutdown(HANDLE handle, DWORD pid, int timeout = kDefaultShutdownTimeout, bool isolated = false);
 
   /// Launch @p command as a detached process under the active console user's token, so the
   /// child does not inherit the caller's (SYSTEM) privileges.

@@ -13,6 +13,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -37,7 +38,7 @@ class MSWindowsWatchdog
   };
 
 public:
-  explicit MSWindowsWatchdog(bool foreground, FileLogOutputter &fileLogOutputter);
+  explicit MSWindowsWatchdog(bool foreground, FileLogOutputter &fileLogOutputter, bool fullControl = false);
   ~MSWindowsWatchdog() = default;
 
   /**
@@ -126,10 +127,11 @@ private:
   /**
    * @brief Stops any core processes which were not started by the watchdog.
    */
-  static void shutdownExistingProcesses();
+  void shutdownExistingProcesses() const;
+  void shutdownProcess(HANDLE process, DWORD pid) const;
 
 private:
-  bool m_running = true;
+  std::atomic_bool m_running = true;
   std::unique_ptr<Thread> m_mainThread;
   std::unique_ptr<Thread> m_outputThread;
   std::unique_ptr<Thread> m_sasThread;
@@ -140,6 +142,7 @@ private:
   int m_startFailures = 0;
   FileLogOutputter &m_fileLogOutputter;
   bool m_foreground = false;
+  bool m_fullControl = false;
   std::wstring m_activeDesktop = {};
   std::unique_ptr<deskflow::platform::MSWindowsProcess> m_process;
   std::optional<double> m_nextStartTime = std::nullopt;

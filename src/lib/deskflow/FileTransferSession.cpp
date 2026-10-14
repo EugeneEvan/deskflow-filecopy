@@ -219,6 +219,7 @@ struct FileTransferSession::Impl
     QStringList roots;
     QByteArray bytes;
     QString reason;
+    quint64 callerGeneration = 0;
   };
   struct Event
   {
@@ -234,6 +235,7 @@ struct FileTransferSession::Impl
     } kind;
     quint64 deliveryEpoch = 0;
     std::shared_ptr<QLockFile> cacheLease;
+    quint64 callerGeneration = 0;
   };
   struct Sender
   {
@@ -296,6 +298,7 @@ struct FileTransferSession::Impl
   std::atomic<quint64> deliveryEpoch{0};
   bool finished = false;
   quint64 workerGeneration = 0;
+  quint64 workerCallerGeneration = 0;
   std::unique_ptr<Sender> sender;
   std::unique_ptr<Receiver> receiver;
   QByteArray completedId;
@@ -329,6 +332,7 @@ struct FileTransferSession::Impl
       std::lock_guard lock(mutex);
       notifyHost = events.empty();
       event.deliveryEpoch = deliveryEpoch;
+      event.callerGeneration = workerCallerGeneration;
       // The ACK window bounds transport events; coalesce progress if the UI stalls.
       if (event.kind == Event::Kind::Progress && !events.empty() && events.back().kind == event.kind &&
           events.back().progress.state == event.progress.state)
@@ -783,6 +787,7 @@ struct FileTransferSession::Impl
       try {
         if (available && command.generation == generation) {
           workerGeneration = command.generation;
+          workerCallerGeneration = command.callerGeneration;
           if (command.kind == Command::Kind::Send)
             start(command.roots);
           else if (command.kind == Command::Kind::Receive)
@@ -809,13 +814,13 @@ struct FileTransferSession::Impl
     wake.notify_all();
   }
 
-  void replace(Command::Kind kind, const QStringList &roots, const QString &reason)
+  void replace(Command::Kind kind, const QStringList &roots, const QString &reason, quint64 callerGeneration)
   {
     std::lock_guard lock(mutex);
     const auto next = ++generation;
     commands.clear();
     events.clear();
-    commands.push_back({kind, next, roots, {}, reason});
+    commands.push_back({kind, next, roots, {}, reason, callerGeneration});
     wake.notify_one();
   }
 };
@@ -831,15 +836,15 @@ FileTransferSession::~FileTransferSession()
   m_impl->stop();
 }
 
-void FileTransferSession::startSend(const QStringList &roots)
+void FileTransferSession::startSend(const QStringList &roots, quint64 callerGeneration)
 {
-  m_impl->replace(Impl::Command::Kind::Send, roots, {});
+  m_impl->replace(Impl::Command::Kind::Send, roots, {}, callerGeneration);
 }
 
-void FileTransferSession::receive(const QByteArray &envelope)
+void FileTransferSession::receive(const QByteArray &envelope, quint64 callerGeneration)
 {
   if (envelope.size() > maxEnvelopeBytes) {
-    cancel(QStringLiteral("file transfer: oversized network envelope"));
+    cancel(QStringLiteral("file transfer: oversized network envelope"), callerGeneration);
     return;
   }
   std::lock_guard lock(m_impl->mutex);
@@ -848,18 +853,24 @@ void FileTransferSession::receive(const QByteArray &envelope)
     m_impl->commands.clear();
     m_impl->events.clear();
     m_impl->commands.push_back(
-        {Impl::Command::Kind::Cancel, next, {}, {}, QStringLiteral("file transfer: receive queue limit exceeded")}
+        {Impl::Command::Kind::Cancel,
+         next,
+         {},
+         {},
+         QStringLiteral("file transfer: receive queue limit exceeded"),
+         callerGeneration}
     );
   } else {
-    m_impl->commands.push_back({Impl::Command::Kind::Receive, m_impl->generation, {}, envelope, {}});
+    m_impl->commands.push_back({Impl::Command::Kind::Receive, m_impl->generation, {}, envelope, {}, callerGeneration});
   }
   m_impl->wake.notify_one();
 }
 
-void FileTransferSession::cancel(const QString &reason)
+void FileTransferSession::cancel(const QString &reason, quint64 callerGeneration)
 {
   m_impl->replace(
-      Impl::Command::Kind::Cancel, {}, reason.isEmpty() ? QStringLiteral("file transfer: cancelled") : reason
+      Impl::Command::Kind::Cancel, {}, reason.isEmpty() ? QStringLiteral("file transfer: cancelled") : reason,
+      callerGeneration
   );
 }
 
@@ -877,11 +888,16 @@ void FileTransferSession::pump()
     if (state->stopping || event.generation != state->generation || event.deliveryEpoch != state->deliveryEpoch)
       continue;
     const auto &cb = state->callbacks;
+    if (cb.acceptGeneration && !cb.acceptGeneration(event.callerGeneration))
+      continue;
     if (event.kind == Impl::Event::Kind::Send && cb.send)
       cb.send(event.bytes);
-    else if (event.kind == Impl::Event::Kind::Publish && cb.publish)
-      cb.publish(event.roots);
-    else if (event.kind == Impl::Event::Kind::Progress && cb.progress)
+    else if (event.kind == Impl::Event::Kind::Publish) {
+      if (cb.publishWithLease)
+        cb.publishWithLease(event.roots, event.cacheLease);
+      else if (cb.publish)
+        cb.publish(event.roots);
+    } else if (event.kind == Impl::Event::Kind::Progress && cb.progress)
       cb.progress(event.progress);
   }
 }

@@ -57,11 +57,29 @@ int main(int argc, char **argv)
 
   const auto foregroundOption = QCommandLineOption({"f", "foreground"}, "Run in the foreground (show console)");
   parser.addOption(foregroundOption);
+  const auto fullControlOption = QCommandLineOption("full-control", "Run the protected FileCopy full-control service");
+  const auto settingsOption = QCommandLineOption("settings", "Protected full-control settings file", "path");
+  parser.addOption(fullControlOption);
+  parser.addOption(settingsOption);
 
   parser.process(app);
 
   if (parser.isSet(foregroundOption)) {
     daemon.setForeground();
+  }
+
+  const bool fullControl = parser.isSet(fullControlOption);
+  if (fullControl != parser.isSet(settingsOption) || (fullControl && parser.isSet(foregroundOption))) {
+    LOG_ERR("--full-control requires --settings and cannot be combined with --foreground");
+    return s_exitFailed;
+  }
+  if (fullControl) {
+    try {
+      daemon.setFullControlSettings(parser.value(settingsOption));
+    } catch (const std::exception &e) {
+      LOG_ERR("full-control initialization failed: %s", e.what());
+      return s_exitFailed;
+    }
   }
 
   // Depends on whether foreground option was set.
@@ -91,9 +109,12 @@ int main(int argc, char **argv)
     }
 #endif
 
-    const auto ipcServer = new ipc::DaemonIpcServer(&app, qPrintable(DaemonApp::logFilename())); // NOSONAR - Qt managed
-    ipcServer->listen();
-    daemon.connectIpcServer(ipcServer);
+    if (!fullControl) {
+      const auto ipcServer =
+          new ipc::DaemonIpcServer(&app, qPrintable(DaemonApp::logFilename())); // NOSONAR - Qt managed
+      ipcServer->listen();
+      daemon.connectIpcServer(ipcServer);
+    }
 
     QThread daemonThread;
     QObject::connect(&daemonThread, &QThread::finished, &app, &QCoreApplication::quit);
@@ -106,10 +127,18 @@ int main(int argc, char **argv)
     return exitCode;
 
   } catch (std::exception &e) {
-    handleError(e.what());
+    if (fullControl) {
+      LOG_ERR("full-control daemon failed: %s", e.what());
+    } else {
+      handleError(e.what());
+    }
     return s_exitFailed;
   } catch (...) {
-    handleError();
+    if (fullControl) {
+      LOG_ERR("full-control daemon failed with an unknown error");
+    } else {
+      handleError();
+    }
     return s_exitFailed;
   }
 }

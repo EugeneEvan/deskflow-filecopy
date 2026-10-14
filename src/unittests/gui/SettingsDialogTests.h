@@ -17,6 +17,7 @@ private Q_SLOTS:
   void init();
   void cleanupTestCase();
   void transferShortcutSelectsSupportedPage();
+  void fullControlEntryPreservesSettingsAndTranslates();
   void serviceTogglePreservesStagedTls();
   void restoreDefaultsKeepsWindowChoicesIndependent();
   void resetRestoresStoredPreferences_data();

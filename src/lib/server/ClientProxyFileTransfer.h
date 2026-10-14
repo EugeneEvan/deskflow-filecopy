@@ -27,6 +27,8 @@ protected:
 
 private:
   deskflow::FileTransferBridge m_transfer;
+  OptionsList m_lastOptions;
+  bool m_haveOptions = false;
   bool m_advertised = false;
   bool m_negotiated = false;
 };

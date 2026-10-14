@@ -614,6 +614,14 @@ La dirección IP asignada ahora no es válida; es posible que deba reiniciar el 
         <translation type="unfinished">certificado no válido, generando uno nuevo</translation>
     </message>
     <message>
+        <source>Windows full control</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Wait for the full control operation to finish before exiting.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Not running</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1422,6 +1430,30 @@ Al habilitar esta opción, se deshabilitará la interfaz gráfica de usuario (GU
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Save or reset your pending settings before managing full control.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Checking or updating the full control component…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Status unavailable: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Not installed. Desktop mode remains available.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Installed and running: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Installed and stopped: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>TLS Certificate Regenerated</source>
         <translation type="unfinished">Certificado TLS regenerado</translation>
     </message>
@@ -1587,6 +1619,30 @@ Al habilitar esta opción, se deshabilitará la interfaz gráfica de usuario (GU
     </message>
     <message>
         <source>Start when I sign in</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Windows full control</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Control administrator windows and UAC while keeping file copy in your signed-in user session. Installing, updating, applying configuration and stopping require administrator confirmation. Uses saved settings; save changes before applying.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Component status has not been checked.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enable / update component</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Apply saved configuration</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Disable full control</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -1761,6 +1817,25 @@ Al habilitar esta opción, se deshabilitará la interfaz gráfica de usuario (GU
     </message>
 </context>
 <context>
+    <name>deskflow::gui::CoreProcess</name>
+    <message>
+        <source>The full control component version differs from the GUI. Use Enable / update component in Settings &gt; Advanced.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The full control component is not installed.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Choose a client or server connection before enabling full control.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Full control requires the built-in server configuration to be saved successfully.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>deskflow::gui::DeviceOverviewWidget</name>
     <message>
         <source>Devices follow the configured screen positions. Move the pointer across a shared edge.</source>
@@ -1923,6 +1998,49 @@ Al habilitar esta opción, se deshabilitará la interfaz gráfica de usuario (GU
     </message>
     <message>
         <source>Remaining: --</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>deskflow::gui::FullControlManager</name>
+    <message>
+        <source>The full control component returned an invalid status.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The full control component path does not match this installation.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not read the full control component status (exit code %1).</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The requested component state could not be confirmed. %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not start the component status query.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The component action failed (exit code %1). Your selected mode was preserved.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The full control manager is missing, its path is invalid, or its protected permissions could not be verified.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Administrator confirmation was cancelled. Your selected mode was preserved.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not launch the component manager (Windows error %1).</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Full control is available on Windows only.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

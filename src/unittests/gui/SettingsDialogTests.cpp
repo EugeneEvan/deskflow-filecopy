@@ -127,6 +127,31 @@ void SettingsDialogTests::serviceTogglePreservesStagedTls()
   QVERIFY(Settings::value(Settings::Security::TlsEnabled).toBool());
 }
 
+void SettingsDialogTests::fullControlEntryPreservesSettingsAndTranslates()
+{
+  const ServerConfig config;
+  SettingsDialog dialog(nullptr, config, isolatedStartup());
+  auto *group = dialog.findChild<QGroupBox *>("groupFullControl");
+  auto *install = dialog.findChild<QPushButton *>("btnFullControlInstall");
+  auto *apply = dialog.findChild<QPushButton *>("btnFullControlApply");
+  auto *disable = dialog.findChild<QPushButton *>("btnFullControlUninstall");
+  QVERIFY(group && install && apply && disable);
+  QCOMPARE(group->isHidden(), !deskflow::platform::isWindows());
+  QVERIFY(!Settings::value(Settings::Gui::FullControlEnabled).toBool());
+  QVERIFY(!install->isEnabled()); // No controller means no unverified action.
+  QVERIFY(!apply->isEnabled());
+  QVERIFY(!disable->isEnabled());
+  I18N::setLanguage(QStringLiteral("zh_CN"));
+  QCOMPARE(I18N::currentLanguage(), QStringLiteral("zh_CN"));
+  QCOMPARE(QCoreApplication::translate("SettingsDialog", "Windows full control"), QStringLiteral("Windows 完整控制"));
+  // Qt posts LanguageChange to widgets after the translator has been installed.
+  QTRY_COMPARE(group->title(), QStringLiteral("Windows 完整控制"));
+  QCOMPARE(install->text(), QStringLiteral("启用 / 更新组件"));
+  QCOMPARE(apply->text(), QStringLiteral("应用已保存配置"));
+  QCOMPARE(disable->text(), QStringLiteral("停用完整控制"));
+  QVERIFY(!Settings::value(Settings::Gui::FullControlEnabled).toBool());
+}
+
 void SettingsDialogTests::restoreDefaultsKeepsWindowChoicesIndependent()
 {
   const auto defaultHide = Settings::defaultValue(Settings::Gui::Autohide).toBool();

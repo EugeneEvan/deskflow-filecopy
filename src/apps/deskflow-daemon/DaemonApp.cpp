@@ -23,13 +23,19 @@
 #include "platform/MSWindowsWatchdog.h"
 
 #define WIN32_LEAN_AND_MEAN
+#include <AclAPI.h>
 #include <Windows.h>
 
 #endif
 
 #include <QCoreApplication>
+#include <QDirIterator>
+#include <QFile>
 #include <QFileInfo>
+#include <QRegularExpression>
 #include <QSettings>
+
+#include <stdexcept>
 
 using namespace deskflow::core;
 
@@ -39,6 +45,117 @@ DaemonApp::DaemonApp(IEventQueue &events) : m_events(events)
 }
 
 DaemonApp::~DaemonApp() = default;
+
+#if defined(Q_OS_WIN)
+namespace {
+
+void requireProtectedPath(const QString &path, bool parentOnly = false)
+{
+  const auto native = QDir::toNativeSeparators(path).toStdWString();
+  const auto attributes = GetFileAttributesW(native.c_str());
+  if (attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
+    throw std::runtime_error("full-control path is missing or is a reparse point: " + path.toStdString());
+  }
+  PSECURITY_DESCRIPTOR descriptor = nullptr;
+  PSID owner = nullptr;
+  PACL dacl = nullptr;
+  if (GetNamedSecurityInfoW(
+          const_cast<wchar_t *>(native.c_str()), SE_FILE_OBJECT, OWNER_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION,
+          &owner, nullptr, &dacl, nullptr, &descriptor
+      ) != ERROR_SUCCESS) {
+    throw std::runtime_error("cannot read full-control path security: " + path.toStdString());
+  }
+  const auto trusted = [](PSID sid) {
+    return sid && (IsWellKnownSid(sid, WinLocalSystemSid) || IsWellKnownSid(sid, WinBuiltinAdministratorsSid));
+  };
+  bool secure = trusted(owner) && dacl;
+  const DWORD forbidden = parentOnly
+                              ? FILE_DELETE_CHILD | WRITE_DAC | WRITE_OWNER | GENERIC_ALL
+                              : FILE_WRITE_DATA | FILE_APPEND_DATA | FILE_WRITE_EA | FILE_WRITE_ATTRIBUTES |
+                                    FILE_DELETE_CHILD | DELETE | WRITE_DAC | WRITE_OWNER | GENERIC_WRITE | GENERIC_ALL;
+  for (DWORD i = 0; secure && i < dacl->AceCount; ++i) {
+    void *entry = nullptr;
+    if (!GetAce(dacl, i, &entry)) {
+      secure = false;
+      break;
+    }
+    const auto header = static_cast<ACE_HEADER *>(entry);
+    if (header->AceFlags & INHERIT_ONLY_ACE) {
+      continue;
+    }
+    if (header->AceType == ACCESS_ALLOWED_ACE_TYPE) {
+      const auto ace = static_cast<ACCESS_ALLOWED_ACE *>(entry);
+      if ((ace->Mask & forbidden) && !trusted(&ace->SidStart)) {
+        secure = false;
+      }
+    } else if (header->AceType != ACCESS_DENIED_ACE_TYPE) {
+      // The installer emits simple allow ACEs. Fail closed for object/callback ACEs.
+      secure = false;
+    }
+  }
+  LocalFree(descriptor);
+  if (!secure) {
+    throw std::runtime_error("full-control path permits unprivileged replacement: " + path.toStdString());
+  }
+}
+
+} // namespace
+#endif
+
+void DaemonApp::setFullControlSettings(const QString &settingsFile)
+{
+#if defined(Q_OS_WIN)
+  const auto appDirectory = QDir::fromNativeSeparators(QCoreApplication::applicationDirPath());
+  static const QRegularExpression expectedDirectory(QStringLiteral("^[A-Za-z]:/Deskflow FileCopy Control$"));
+  const auto fixedSettings = appDirectory + QStringLiteral("/settings/Deskflow.conf");
+  if (!expectedDirectory.match(appDirectory).hasMatch() ||
+      QDir::fromNativeSeparators(settingsFile).compare(fixedSettings, Qt::CaseInsensitive) != 0) {
+    throw std::runtime_error("full-control requires the fixed protected installation and settings paths");
+  }
+  requireProtectedPath(appDirectory.left(3), true);
+  requireProtectedPath(appDirectory);
+  QDirIterator entries(
+      appDirectory, QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden, QDirIterator::Subdirectories
+  );
+  while (entries.hasNext()) {
+    requireProtectedPath(entries.next());
+  }
+  QFile marker(appDirectory + QStringLiteral("/deskflow-full-control.component"));
+  if (!marker.open(QIODevice::ReadOnly) || marker.readAll().trimmed() != "Deskflow FileCopy Full Control v1") {
+    throw std::runtime_error("full-control component marker is missing or invalid");
+  }
+  requireProtectedPath(fixedSettings);
+  QSettings config(fixedSettings, QSettings::IniFormat);
+  const auto requirePath = [&config, &appDirectory](const QString &key, const QString &relative) {
+    if (QDir::fromNativeSeparators(config.value(key).toString())
+            .compare(appDirectory + relative, Qt::CaseInsensitive) != 0) {
+      throw std::runtime_error("full-control settings contain a non-protected path: " + key.toStdString());
+    }
+  };
+  requirePath(Settings::Security::Certificate, QStringLiteral("/settings/tls/deskflow.pem"));
+  requirePath(Settings::Log::File, QStringLiteral("/logs/core.log"));
+  requirePath(Settings::Daemon::LogFile, QStringLiteral("/logs/daemon.log"));
+  if (!config.value(Settings::Security::TlsEnabled).toBool() ||
+      !config.value(Settings::Security::CheckPeers).toBool() ||
+      config.value(Settings::Core::EnableEnterCommand).toBool() ||
+      config.value(Settings::Core::EnableExitCommand).toBool() ||
+      config.value(Settings::Server::ExternalConfig).toBool()) {
+    throw std::runtime_error(
+        "full-control requires TLS peer checks and disabled screen commands/external configuration"
+    );
+  }
+  m_fullControl = true;
+  m_configFile = fixedSettings;
+  Settings::setSettingsFile(fixedSettings);
+  // Working directory and subsequent DLL loads must never resolve in a user directory.
+  SetCurrentDirectoryW(QDir::toNativeSeparators(appDirectory).toStdWString().c_str());
+  SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_APPLICATION_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32);
+  QCoreApplication::setLibraryPaths({appDirectory + QStringLiteral("/plugins")});
+#else
+  Q_UNUSED(settingsFile)
+  throw std::runtime_error("full-control is only supported on Windows");
+#endif
+}
 
 void DaemonApp::saveLogLevel(const QString &logLevel) const
 {
@@ -77,7 +194,7 @@ void DaemonApp::applyWatchdogCommand() const
 
   QSettings config(m_configFile, QSettings::IniFormat);
   const auto coreMode = config.value(Settings::Core::CoreMode).toInt();
-  const auto elevate = config.value(Settings::Daemon::Elevate, !Settings::isPortableMode()).toBool();
+  const auto elevate = m_fullControl || config.value(Settings::Daemon::Elevate, !Settings::isPortableMode()).toBool();
 
   QString modeArg;
   if (coreMode == Settings::CoreMode::Server) {
@@ -125,6 +242,9 @@ void DaemonApp::clearSettings()
 
 void DaemonApp::connectIpcServer(const ipc::DaemonIpcServer *ipcServer) const
 {
+  if (m_fullControl) {
+    throw std::runtime_error("legacy daemon management IPC is disabled in full-control mode");
+  }
   // Use direct connection as this object is on it's own thread,
   // and so is on a different event loop to the main Qt loop.
   connect(ipcServer, &ipc::DaemonIpcServer::logLevelChanged, this, &DaemonApp::saveLogLevel, Qt::DirectConnection);
@@ -166,10 +286,12 @@ void DaemonApp::run(QThread &daemonThread)
   });
 
 #if defined(Q_OS_WIN)
-  m_pWatchdog = std::make_unique<MSWindowsWatchdog>(m_foreground, *m_pFileLogOutputter);
+  m_pWatchdog = std::make_unique<MSWindowsWatchdog>(m_foreground, *m_pFileLogOutputter, m_fullControl);
 
-  if (const auto persistedConfig = Settings::value(Settings::Daemon::ConfigFile).toString();
-      !persistedConfig.isEmpty()) {
+  if (m_fullControl) {
+    applyWatchdogCommand();
+  } else if (const auto persistedConfig = Settings::value(Settings::Daemon::ConfigFile).toString();
+             !persistedConfig.isEmpty()) {
     LOG_DEBUG("using last known config file: %s", persistedConfig.toUtf8().constData());
     m_configFile = persistedConfig;
     applyWatchdogCommand();

@@ -200,7 +200,7 @@ public:
   void getClients(std::vector<std::string> &list) const;
   void sendConnectedClientsIpc() const;
   size_t getMaximumClipboardSizeBytes() const;
-  bool publishTransferredFiles(const BaseClientProxy *sender, const QStringList &paths);
+  bool publishTransferredFiles(const BaseClientProxy *sender, const QStringList &paths, bool alreadyPublished = false);
   bool canTransferFiles() const;
 
   //@}

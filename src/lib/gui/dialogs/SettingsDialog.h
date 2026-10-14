@@ -11,6 +11,7 @@
 
 #include "gui/WindowsLoginStartup.h"
 #include "gui/config/ServerConfig.h"
+#include "gui/core/FullControlManager.h"
 
 class SettingsDialogButtonBox;
 
@@ -29,15 +30,17 @@ public:
   );
   ~SettingsDialog() override;
   void selectFileTransferTab();
+  void setFullControlManager(deskflow::gui::FullControlManager *manager);
 
 Q_SIGNALS:
   void requestRemoveAllSettings();
+  void requestFullControlAction(deskflow::gui::FullControlManager::Action action);
 
 protected:
   void changeEvent(QEvent *e) override;
 
 private:
-  void initConnections() const;
+  void initConnections();
   void regenCertificates();
   void browseCertificatePath();
   void browseLogPath();
@@ -49,6 +52,8 @@ private:
   void resetAllSettings();
   void updateText();
   void manageFileCache();
+  void updateFullControl();
+  void requestFullControl(deskflow::gui::FullControlManager::Action action);
 
   /// @brief Load all settings.
   void loadFromConfig();
@@ -93,4 +98,5 @@ private:
   std::unique_ptr<Ui::SettingsDialog> ui;
   const ServerConfig &m_serverConfig;
   SettingsDialogButtonBox *m_buttonBox = nullptr;
+  deskflow::gui::FullControlManager *m_fullControl = nullptr;
 };

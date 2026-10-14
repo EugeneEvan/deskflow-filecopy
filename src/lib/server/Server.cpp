@@ -1542,12 +1542,13 @@ bool Server::canTransferFiles() const
          deskflow::FileTransferBridge::enabled();
 }
 
-bool Server::publishTransferredFiles(const BaseClientProxy *sender, const QStringList &paths)
+bool Server::publishTransferredFiles(const BaseClientProxy *sender, const QStringList &paths, bool alreadyPublished)
 {
   auto &clipboard = m_clipboards[kClipboardClipboard];
   const auto *transfer = dynamic_cast<const ClientProxyFileTransfer *>(sender);
   if (!canTransferFiles() || !m_clientSet.contains(const_cast<BaseClientProxy *>(sender)) || transfer == nullptr ||
-      !transfer->canTransferFiles() || !deskflow::FileTransferBridge::publishFiles(m_screen, paths))
+      !transfer->canTransferFiles() ||
+      (!alreadyPublished && !deskflow::FileTransferBridge::publishFiles(m_screen, paths)))
     return false;
   // An inactive secondary can copy files with an older screen-entry sequence,
   // so its legacy CCLP may have been ignored. The negotiated file transfer
@@ -1555,7 +1556,10 @@ bool Server::publishTransferredFiles(const BaseClientProxy *sender, const QStrin
   // that the native clipboard has not changed since Begin. Keep the current
   // sequence so stale legacy text updates are still rejected.
   clipboard.m_clipboardOwner = getName(sender);
-  m_primaryClient->getClipboard(kClipboardClipboard, &clipboard.m_clipboard);
+  if (alreadyPublished)
+    deskflow::FileTransferBridge::cacheFiles(&clipboard.m_clipboard, paths);
+  else
+    m_primaryClient->getClipboard(kClipboardClipboard, &clipboard.m_clipboard);
   clipboard.m_clipboardData = clipboard.m_clipboard.marshall();
   m_primaryClient->setClipboardDirty(kClipboardClipboard, false);
 #ifdef Q_OS_WIN

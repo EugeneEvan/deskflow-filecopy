@@ -101,6 +101,7 @@ SettingsDialog::SettingsDialog(QWidget *parent, const ServerConfig &serverConfig
 
   setButtonBoxEnabledButtons();
   initConnections();
+  updateFullControl();
 }
 
 void SettingsDialog::selectFileTransferTab()
@@ -121,8 +122,17 @@ void SettingsDialog::changeEvent(QEvent *e)
   }
 }
 
-void SettingsDialog::initConnections() const
+void SettingsDialog::initConnections()
 {
+  connect(ui->btnFullControlInstall, &QPushButton::clicked, this, [this] {
+    requestFullControl(FullControlManager::Action::Install);
+  });
+  connect(ui->btnFullControlApply, &QPushButton::clicked, this, [this] {
+    requestFullControl(FullControlManager::Action::Apply);
+  });
+  connect(ui->btnFullControlUninstall, &QPushButton::clicked, this, [this] {
+    requestFullControl(FullControlManager::Action::Uninstall);
+  });
   connect(ui->btnFileCache, &QPushButton::clicked, this, &SettingsDialog::manageFileCache);
   connect(m_buttonBox, &SettingsDialogButtonBox::accepted, this, &SettingsDialog::accept);
   connect(m_buttonBox, &SettingsDialogButtonBox::rejected, this, &QDialog::reject);
@@ -241,6 +251,7 @@ void SettingsDialog::resetAllSettings()
 
 void SettingsDialog::updateText()
 {
+  updateFullControl();
   const auto logLevels = LogLevel::logLevelNames().count();
   const QStringList toolTips = {tr("Required messages"),        tr("Non-fatal errors"), tr("General warnings"),
                                 tr("General events [Default]"), tr("Debug entries"),    tr("Verbose debug output")};
@@ -261,6 +272,8 @@ void SettingsDialog::updateText()
 
 void SettingsDialog::accept()
 {
+  if (m_fullControl && m_fullControl->busy())
+    return;
   if (!Settings::isWritable())
     return;
 
@@ -402,6 +415,7 @@ void SettingsDialog::updateTlsControls()
   ui->groupSecurity->setChecked(TlsUtility::isEnabled());
 
   updateTlsControlsEnabled();
+  updateFullControl();
 }
 
 void SettingsDialog::updateTlsControlsEnabled()
@@ -502,6 +516,7 @@ void SettingsDialog::updateControls()
   ui->widgetLogFilename->setEnabled(writable && logToFile);
 
   updateTlsControlsEnabled();
+  updateFullControl();
 }
 
 void SettingsDialog::logLevelChanged()
@@ -649,6 +664,67 @@ void SettingsDialog::setButtonBoxEnabledButtons() const
   m_buttonBox->enableSave(modified);
   m_buttonBox->enableReset(modified);
   m_buttonBox->enableRestoreDefaults(!isDefault());
+}
+
+void SettingsDialog::setFullControlManager(FullControlManager *manager)
+{
+  m_fullControl = manager;
+  connect(manager, &FullControlManager::statusChanged, this, &SettingsDialog::updateFullControl);
+  connect(manager, &FullControlManager::busyChanged, this, &SettingsDialog::updateFullControl);
+  connect(
+      manager, &FullControlManager::finished, this,
+      [this](FullControlManager::Action, bool succeeded, const QString &) {
+        if (succeeded) {
+          ui->groupService->setChecked(
+              Settings::value(Settings::Core::ProcessMode).value<Settings::ProcessMode>() ==
+              Settings::ProcessMode::Service
+          );
+          updateFullControl();
+        }
+      }
+  );
+  updateFullControl();
+  manager->refresh();
+}
+
+void SettingsDialog::requestFullControl(FullControlManager::Action action)
+{
+  if (!m_fullControl || m_fullControl->busy())
+    return;
+  if (isModified()) {
+    QMessageBox::information(
+        this, tr("Windows full control"), tr("Save or reset your pending settings before managing full control.")
+    );
+    return;
+  }
+  Q_EMIT requestFullControlAction(action);
+}
+
+void SettingsDialog::updateFullControl()
+{
+  ui->groupFullControl->setVisible(deskflow::platform::isWindows());
+  const bool enabled = Settings::value(Settings::Gui::FullControlEnabled).toBool();
+  const bool busy = m_fullControl && m_fullControl->busy();
+  const bool installed = m_fullControl && m_fullControl->status().valid && m_fullControl->status().installed;
+  ui->btnFullControlInstall->setEnabled(m_fullControl && !busy && Settings::isWritable());
+  ui->btnFullControlApply->setEnabled(installed && !busy && Settings::isWritable());
+  ui->btnFullControlUninstall->setEnabled(installed && !busy && Settings::isWritable());
+  ui->groupService->setEnabled(!enabled && !busy && Settings::isWritable());
+  ui->btnClearAllSettings->setEnabled(!enabled && !busy && Settings::isWritable());
+  m_buttonBox->setEnabled(!busy);
+  if (!m_fullControl)
+    return;
+  const auto &status = m_fullControl->status();
+  if (busy)
+    ui->lblFullControlStatus->setText(tr("Checking or updating the full control component…"));
+  else if (!status.valid)
+    ui->lblFullControlStatus->setText(tr("Status unavailable: %1").arg(status.error));
+  else if (!status.installed)
+    ui->lblFullControlStatus->setText(tr("Not installed. Desktop mode remains available."));
+  else
+    ui->lblFullControlStatus->setText(
+        (status.running ? tr("Installed and running: %1") : tr("Installed and stopped: %1")).arg(status.directory)
+    );
 }
 
 SettingsDialog::~SettingsDialog() = default;

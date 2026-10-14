@@ -13,6 +13,8 @@
 #include <functional>
 #include <memory>
 
+class QLockFile;
+
 namespace deskflow {
 
 // One authenticated peer connection. Disk work runs on a private worker;
@@ -50,6 +52,12 @@ public:
     // Worker-thread notification only. Post a safe host event; send, publish
     // and progress continue to run exclusively from pump(). Called unlocked.
     std::function<void()> wake;
+    // A user agent may defer publication until Default desktop is accessible.
+    // Retain the cache lease through that deferred publication or cancellation.
+    std::function<void(const QStringList &, std::shared_ptr<QLockFile>)> publishWithLease;
+    // Optional caller lifetime, independent of the worker's cancellation
+    // generation. Checked before every application callback from pump().
+    std::function<bool(quint64)> acceptGeneration;
   };
 
   explicit FileTransferSession(
@@ -59,9 +67,9 @@ public:
   FileTransferSession(const FileTransferSession &) = delete;
   FileTransferSession &operator=(const FileTransferSession &) = delete;
 
-  void startSend(const QStringList &roots);
-  void receive(const QByteArray &envelope);
-  void cancel(const QString &reason = {});
+  void startSend(const QStringList &roots, quint64 callerGeneration = 0);
+  void receive(const QByteArray &envelope, quint64 callerGeneration = 0);
+  void cancel(const QString &reason = {}, quint64 callerGeneration = 0);
   void pump();
 
   static constexpr quint64 maxBatchBytes = 10ULL * 1024 * 1024 * 1024;

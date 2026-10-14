@@ -277,13 +277,18 @@ void Client::setClipboard(ClipboardID id, const IClipboard *clipboard)
   m_sentClipboard[id] = false;
 }
 
-bool Client::publishTransferredFiles(const QStringList &paths)
+bool Client::publishTransferredFiles(const QStringList &paths, bool alreadyPublished)
 {
   if (!m_enableClipboard || m_maximumClipboardSize == 0 || m_ownClipboard[kClipboardClipboard] ||
-      !deskflow::FileTransferBridge::publishFiles(m_screen, paths))
+      (!alreadyPublished && !deskflow::FileTransferBridge::publishFiles(m_screen, paths)))
     return false;
-  m_ownClipboard[kClipboardClipboard] = false;
-  m_sentClipboard[kClipboardClipboard] = false;
+  Clipboard clipboard;
+  deskflow::FileTransferBridge::cacheFiles(&clipboard, paths);
+  for (ClipboardID id = 0; id < kClipboardEnd; ++id) {
+    m_ownClipboard[id] = false;
+    m_sentClipboard[id] = false;
+    m_dataClipboard[id] = clipboard.marshall();
+  }
   return true;
 }
 

@@ -55,10 +55,18 @@ BOOL MSWindowsProcess::startInForeground()
   return m_createProcessResult;
 }
 
-BOOL MSWindowsProcess::startAsUser(HANDLE userToken, LPSECURITY_ATTRIBUTES sa)
+BOOL MSWindowsProcess::startAsUser(HANDLE userToken, LPSECURITY_ATTRIBUTES sa, bool inheritHandles)
 {
   STARTUPINFO si;
   setStartupInfo(si);
+  if (!inheritHandles) {
+    // Windows does not support inheriting handles across Terminal Services sessions.
+    // The protected core writes its own log; no service pipe belongs in its session.
+    si.dwFlags &= ~STARTF_USESTDHANDLES;
+    si.hStdInput = nullptr;
+    si.hStdOutput = nullptr;
+    si.hStdError = nullptr;
+  }
 
   LPVOID environment;
   if (!CreateEnvironmentBlock(&environment, userToken, FALSE)) {
@@ -69,8 +77,8 @@ BOOL MSWindowsProcess::startAsUser(HANDLE userToken, LPSECURITY_ATTRIBUTES sa)
   ZeroMemory(&m_info, sizeof(PROCESS_INFORMATION));
   const DWORD creationFlags = NORMAL_PRIORITY_CLASS | CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT;
   m_createProcessResult = CreateProcessAsUser(
-      userToken, nullptr, LPWSTR(m_command.c_str()), sa, nullptr, TRUE, creationFlags, environment, nullptr, &si,
-      &m_info
+      userToken, nullptr, LPWSTR(m_command.c_str()), sa, nullptr, inheritHandles, creationFlags, environment, nullptr,
+      &si, &m_info
   );
 
   DestroyEnvironmentBlock(environment);
@@ -117,12 +125,12 @@ DWORD MSWindowsProcess::waitForExit()
   return exitCode;
 }
 
-void MSWindowsProcess::shutdown(int timeout)
+void MSWindowsProcess::shutdown(int timeout, bool isolated)
 {
-  shutdown(m_info.hProcess, m_info.dwProcessId, timeout);
+  shutdown(m_info.hProcess, m_info.dwProcessId, timeout, isolated);
 }
 
-void MSWindowsProcess::shutdown(HANDLE handle, DWORD pid, int timeout)
+void MSWindowsProcess::shutdown(HANDLE handle, DWORD pid, int timeout, bool isolated)
 {
   LOG_DEBUG("shutting down process %d", pid);
 
@@ -133,6 +141,25 @@ void MSWindowsProcess::shutdown(HANDLE handle, DWORD pid, int timeout)
 
   if (pid == 0) {
     LOG_ERR("invalid process id, cannot shutdown process %d", pid);
+    return;
+  }
+
+  if (isolated) {
+    // The global close event is shared with unrelated Deskflow installations.
+    // A protected service must affect only the process represented by its handle.
+    // Retain ownership on failed termination: an exception must not make a
+    // joining service mistake an exited worker thread for an exited SYSTEM core.
+    while (WaitForSingleObject(handle, 0) != WAIT_OBJECT_0) {
+      if (!TerminateProcess(handle, s_exitSuccess)) {
+        LOG_ERR("cannot terminate isolated core %d, error: %lu", pid, GetLastError());
+      }
+      if (WaitForSingleObject(handle, timeout * 1000) == WAIT_OBJECT_0) {
+        break;
+      }
+      LOG_CRIT("isolated core %d termination not confirmed; retaining handle and retrying", pid);
+      Sleep(1000);
+    }
+    LOG_DEBUG("isolated process %d has exited", pid);
     return;
   }
 

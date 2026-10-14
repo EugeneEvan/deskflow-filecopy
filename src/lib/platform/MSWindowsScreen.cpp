@@ -22,6 +22,7 @@
 #include "deskflow/Clipboard.h"
 #include "deskflow/KeyMap.h"
 #include "deskflow/ScreenException.h"
+#include "deskflow/WindowsFileAgentTransport.h"
 #include "platform/MSWindowsClipboard.h"
 #include "platform/MSWindowsDesks.h"
 #include "platform/MSWindowsEventQueueBuffer.h"
@@ -318,6 +319,17 @@ void MSWindowsScreen::leave()
 
 bool MSWindowsScreen::setClipboard(ClipboardID, const IClipboard *src)
 {
+  if (src != nullptr && deskflow::fileagent::processIdentity() != deskflow::fileagent::ProcessIdentity::User) {
+    if (!src->open(0))
+      return false;
+    const bool files = src->has(IClipboard::Format::Files);
+    src->close();
+    // Screen switching may replay a logical Files cache. The user agent has
+    // already published the native clipboard; SYSTEM must neither republish
+    // those paths nor empty the native clipboard before copying them.
+    if (files)
+      return true;
+  }
   MSWindowsClipboard dst(m_window);
   if (src != nullptr) {
     // save clipboard data
