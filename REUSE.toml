@@ -82,3 +82,15 @@ SPDX-License-Identifier = "GPL-2.0-only"
 path = "deploy/windows/latest-version.txt"
 SPDX-FileCopyrightText = "2026 Deskflow FileCopy contributors"
 SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "docs/images/overview.svg"
+precedence = "override"
+SPDX-FileCopyrightText = "2026 Deskflow FileCopy contributors"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = ["docs/images/settings-file-transfer.png", "docs/images/settings-startup.png"]
+precedence = "override"
+SPDX-FileCopyrightText = ["Deskflow Developers", "2026 Deskflow FileCopy contributors"]
+SPDX-License-Identifier = "GPL-2.0-only"

@@ -10,6 +10,14 @@ Deskflow FileCopy 是基于 [Deskflow](https://github.com/deskflow/deskflow) 的
 
 `CODEOWNERS` 用于声明审核归属，不会自行授予或撤销写权限；实际写权限和合并要求由 GitHub 仓库设置控制。该说明遵循 [GitHub 的 CODEOWNERS 定义](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners)。
 
+## 版本发布节奏
+
+- Releases 对外保留 **1 个推荐版本，最多再保留 1 个回退版本**。常规提交、README 调整和单个界面微调不单独发布安装包。
+- 将相关修复集中完成，经过对应自动验证与 Windows 双机验收后，再由仓库主人决定发布。权限组件、文件互传、升级和配置保留应按改动范围验收。
+- 测试中的版本保持草稿；是否标为正式版由仓库主人决定，不能把测试计划或有限设备上的结果写成全面兼容保证。
+- 被替代的旧发布转为草稿归档，保留附件与源码标签。归档后旧公开下载链接可能无法使用，README 只链接仍公开的推荐版与回退版。
+- 更新推荐版本时，同步维护 README 下载入口、Release 说明和安装包校验值。只有文档变化时，不重新打包二进制，也不移动已有版本标签。
+
 ## 报告问题
 
 请先确认使用的是本项目版本，并在本仓库提交问题。建议说明：

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="440" viewBox="0 0 1200 440" role="img" aria-labelledby="title desc">
+  <title id="title">Deskflow FileCopy：一套键鼠，两台电脑，双向复制文件</title>
+  <desc id="desc">功能示意。电脑 A 与电脑 B 通过局域网连接，复制的文件先传到对端缓存，完成后粘贴到目标文件夹。文件互传仅支持 Windows。</desc>
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#fafafa"/><stop offset="1" stop-color="#e8eaed"/></linearGradient>
+    <linearGradient id="silver" x2="0" y2="1"><stop stop-color="#eef0f3"/><stop offset="1" stop-color="#b6bdc7"/></linearGradient>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 7 4 0 8" fill="none" stroke="#59616d" stroke-width="1.6"/></marker>
+  </defs>
+  <rect x="1" y="1" width="1198" height="438" rx="24" fill="url(#bg)" stroke="#d5d9df"/>
+  <g font-family="Segoe UI, Microsoft YaHei, Noto Sans CJK SC, sans-serif" fill="#20252c">
+    <path d="m49 38 9 58 15-17 12 22 12-7-13-22 24-1z" fill="#fdfefe" stroke="#303741" stroke-width="4" stroke-linejoin="round"/>
+    <text x="133" y="72" font-size="37" font-weight="700">Deskflow FileCopy</text>
+    <text x="133" y="105" font-size="19" fill="#59616d">一套键鼠 · 两台电脑 · 文件双向复制</text>
+    <rect x="954" y="47" width="197" height="40" rx="20" fill="#ffffff" stroke="#d2d6dd"/>
+    <text x="1052" y="73" text-anchor="middle" font-size="17">Windows ↔ Windows</text>
+    <g stroke="#4b535e" stroke-width="3">
+      <rect x="74" y="153" width="298" height="160" rx="13" fill="#fff"/>
+      <path d="M196 315v22h54v-22M170 338h106" fill="none"/>
+      <rect x="827" y="153" width="298" height="160" rx="13" fill="#fff"/>
+      <path d="M949 315v22h54v-22M923 338h106" fill="none"/>
+    </g>
+    <text x="223" y="201" text-anchor="middle" font-size="22" font-weight="600">电脑 A</text>
+    <text x="223" y="236" text-anchor="middle" font-size="18" fill="#59616d">选中文件或文件夹</text>
+    <rect x="172" y="257" width="103" height="31" rx="6" fill="#eef0f3"/>
+    <text x="223" y="279" text-anchor="middle" font-size="17">Ctrl + C</text>
+    <text x="976" y="201" text-anchor="middle" font-size="22" font-weight="600">电脑 B</text>
+    <text x="976" y="236" text-anchor="middle" font-size="18" fill="#59616d">接收完成后粘贴</text>
+    <rect x="925" y="257" width="103" height="31" rx="6" fill="#eef0f3"/>
+    <text x="976" y="279" text-anchor="middle" font-size="17">Ctrl + V</text>
+    <path d="M405 204h367" fill="none" stroke="#59616d" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <path d="M780 276H414" fill="none" stroke="#59616d" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <rect x="501" y="182" width="196" height="116" rx="15" fill="#f1f3f5" stroke="#d5d9df"/>
+    <path d="M564 202h28l9 9h34v42h-71z" fill="url(#silver)" stroke="#67717f" stroke-width="2" stroke-linejoin="round"/>
+    <text x="599" y="280" text-anchor="middle" font-size="17">局域网 · 接收端缓存</text>
+    <path d="M49 365h1102" stroke="#d5d9df"/>
+    <text x="223" y="403" text-anchor="middle" font-size="17" fill="#59616d">键鼠跨屏控制</text>
+    <text x="599" y="403" text-anchor="middle" font-size="17" fill="#59616d">文件 / 文件夹双向互传</text>
+    <text x="976" y="403" text-anchor="middle" font-size="17" fill="#59616d">TLS 加密与指纹认证</text>
+  </g>
+</svg>
