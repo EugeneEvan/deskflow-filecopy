@@ -115,6 +115,8 @@ Q_SIGNALS:
   void peerFingerprint(const QString &fingerprint);
   void missingKeyboardLayouts(const QString &layouts);
   void fileTransferStatusChanged(const QString &statusJson);
+  void fileTransferAvailabilityChanged(const QString &availabilityJson);
+  void fileTransferClipboardChanged();
   void connectionEndpointsChanged();
   void fullControlError(const QString &message);
 

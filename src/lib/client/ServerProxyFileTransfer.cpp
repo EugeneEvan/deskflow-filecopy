@@ -40,6 +40,12 @@ void ServerProxyFileTransfer::onOptionsChanged(const OptionsList &options)
 
 void ServerProxyFileTransfer::requestFiles()
 {
+  if (!m_transfer.available()) {
+    m_recovering = m_recovering || m_requested || m_negotiated;
+    m_requested = false;
+    m_negotiated = false;
+    return;
+  }
   if (m_advertised && m_transfer.available() && !m_requested) {
     m_requested = true;
     ProtocolUtil::writef(getStream(), kMsgCFileCopyHello);
@@ -48,6 +54,7 @@ void ServerProxyFileTransfer::requestFiles()
 
 void ServerProxyFileTransfer::onOptionsReset()
 {
+  m_recovering = m_recovering || m_requested || m_negotiated;
   m_advertised = false;
   m_requested = false;
   m_negotiated = false;
@@ -57,18 +64,31 @@ void ServerProxyFileTransfer::onOptionsReset()
 ServerProxy::ConnectionResult ServerProxyFileTransfer::parseMessage(const uint8_t *code)
 {
   if (std::memcmp(code, kMsgCFileCopyAck, 4) == 0) {
+    // Pipe failure may be observed here before its queued worker wake is
+    // dispatched. A valid in-flight ACK must not tear down keyboard sharing.
+    if (getCurrentMessageSize() == 4 && m_requested && !m_transfer.available()) {
+      requestFiles();
+      return ConnectionResult::Okay;
+    }
+    // Capability withdrawal can race an acknowledgement already on the wire.
+    if (getCurrentMessageSize() == 4 && !m_requested && (m_everNegotiated || m_recovering))
+      return ConnectionResult::Okay;
     if (!m_requested || m_negotiated || getCurrentMessageSize() != 4 || !m_transfer.available()) {
       throw BadClientException();
     }
     m_negotiated = true;
+    m_everNegotiated = true;
+    m_recovering = false;
     m_transfer.setNegotiated(true);
     return ConnectionResult::Okay;
   }
   if (std::memcmp(code, kMsgDFileCopy, 4) == 0) {
-    if (!m_negotiated) {
+    if (!m_negotiated && !m_everNegotiated && !m_recovering) {
       throw BadClientException();
     }
-    m_transfer.receive(deskflow::filetransfer::readFrame(getStream(), getCurrentMessageSize()));
+    const auto payload = deskflow::filetransfer::readFrame(getStream(), getCurrentMessageSize());
+    if (m_negotiated)
+      m_transfer.receive(payload);
     return ConnectionResult::Okay;
   }
   return ServerProxy1_8::parseMessage(code);

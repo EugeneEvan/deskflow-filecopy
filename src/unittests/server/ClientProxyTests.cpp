@@ -348,9 +348,10 @@ void ClientProxyTests::fileCopyNegotiatesThroughMessageParser()
   test.receive("FCHL");
   QCOMPARE(test.stream->take(), QByteArray("FCHA"));
   QVERIFY(!test.events.has(EventTypes::ClientProxyDisconnected));
-  // A repeated capability hello is a protocol error, not a second session.
+  // A recovered user agent renegotiates on the existing keyboard connection.
   test.receive("FCHL");
-  QVERIFY(test.events.has(EventTypes::ClientProxyDisconnected));
+  QCOMPARE(test.stream->take(), QByteArray("FCHA"));
+  QVERIFY(!test.events.has(EventTypes::ClientProxyDisconnected));
 }
 
 void ClientProxyTests::fileCopyDisabledDoesNotAdvertiseOrAcknowledge()
@@ -370,6 +371,30 @@ void ClientProxyTests::fileCopyRejectsDataBeforeNegotiation()
   FileProxyUnderTest test;
   test.receive("FCDT" + QByteArray::fromHex("00000001 01"));
   QVERIFY(test.events.has(EventTypes::ClientProxyDisconnected));
+}
+
+void ClientProxyTests::withdrawnFileCopyIgnoresLateFrames()
+{
+#ifndef Q_OS_WIN
+  QSKIP("File copying is currently Windows only");
+#endif
+  enableFileCopy(true);
+  FileProxyUnderTest test;
+  test.proxy.setOptions({});
+  test.stream->take();
+  test.receive("FCHL");
+  QCOMPARE(test.stream->take(), QByteArray("FCHA"));
+  enableFileCopy(false);
+  test.proxy.setOptions({});
+  test.stream->take();
+  test.receive("FCDT" + QByteArray::fromHex("00000001 01"));
+  QVERIFY(!test.events.has(EventTypes::ClientProxyDisconnected));
+  enableFileCopy(true);
+  test.proxy.setOptions({});
+  test.stream->take();
+  test.receive("FCHL");
+  QCOMPARE(test.stream->take(), QByteArray("FCHA"));
+  QVERIFY(!test.events.has(EventTypes::ClientProxyDisconnected));
 }
 
 void ClientProxyTests::fileSelectionDoesNotSendLegacyClipboard()

@@ -24,6 +24,7 @@
 #include "common/Settings.h"
 #include "common/UrlConstants.h"
 #include "common/VersionInfo.h"
+#include "gui/FileTransferIndicator.h"
 #include "gui/Messages.h"
 #include "gui/TlsUtility.h"
 #include "gui/core/CoreProcess.h"
@@ -35,7 +36,9 @@
 #include "widgets/FileTransferWidget.h"
 #include "widgets/StatusBar.h"
 
+#include <QApplication>
 #include <QCheckBox>
+#include <QClipboard>
 #include <QCloseEvent>
 #include <QDesktopServices>
 #include <QFileDialog>
@@ -54,6 +57,7 @@
 #include <QResizeEvent>
 #include <QScreen>
 #include <QScrollBar>
+#include <QShowEvent>
 #include <QSignalBlocker>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -64,6 +68,10 @@
 
 #if defined(Q_OS_MACOS)
 #include <ApplicationServices/ApplicationServices.h>
+#endif
+
+#ifdef Q_OS_WIN
+#include <qt_windows.h>
 #endif
 
 using namespace deskflow::gui;
@@ -78,6 +86,7 @@ MainWindow::MainWindow()
       m_statusBar{new StatusBar(this)},
       m_deviceOverview{new DeviceOverviewWidget(this)},
       m_fileTransferWidget{new FileTransferWidget(this)},
+      m_transferIndicator{new FileTransferIndicator(this)},
       m_cacheStatusWidget{new CacheStatusWidget(this)},
       m_menuFile{new QMenu(this)},
       m_menuEdit{new QMenu(this)},
@@ -384,12 +393,28 @@ void MainWindow::connectSlots()
       &m_coreProcess, &CoreProcess::fileTransferStatusChanged, m_fileTransferWidget, &FileTransferWidget::setStatus
   );
   connect(m_fileTransferWidget, &FileTransferWidget::cancelRequested, &m_coreProcess, &CoreProcess::cancelFileTransfer);
+  connect(m_transferIndicator, &FileTransferIndicator::iconChanged, m_trayIcon, &QSystemTrayIcon::setIcon);
+  connect(m_transferIndicator, &FileTransferIndicator::toolTipChanged, m_trayIcon, &QSystemTrayIcon::setToolTip);
+  connect(m_fileTransferWidget, &FileTransferWidget::presentationChanged, this, &MainWindow::updateTransferIndicator);
   connect(
-      m_fileTransferWidget, &FileTransferWidget::notification, this,
-      [this](const QString &title, const QString &message, bool failed) {
-        m_trayIcon->showMessage(title, message, failed ? QSystemTrayIcon::Warning : QSystemTrayIcon::Information);
-      }
+      &m_coreProcess, &CoreProcess::fileTransferAvailabilityChanged, m_fileTransferWidget,
+      &FileTransferWidget::setRuntimeAvailability
   );
+  connect(&m_coreProcess, &CoreProcess::fileTransferClipboardChanged, this, [this] {
+    m_transferIndicator->clipboardChanged();
+    m_fileTransferWidget->clearClipboardResult();
+  });
+  connect(QApplication::clipboard(), &QClipboard::changed, this, [this](QClipboard::Mode mode) {
+    if (mode != QClipboard::Clipboard)
+      return;
+#ifdef Q_OS_WIN
+    // Ready can arrive before Qt dispatches our own clipboard notification.
+    if (GetClipboardSequenceNumber() == m_successClipboardSequence)
+      return;
+#endif
+    m_transferIndicator->clipboardChanged();
+    m_fileTransferWidget->clearClipboardResult();
+  });
   connect(m_fileTransferWidget, &FileTransferWidget::cacheChanged, m_cacheStatusWidget, &CacheStatusWidget::refresh);
   connect(m_cacheStatusWidget, &CacheStatusWidget::manageRequested, this, [this] { openSettingsPage(true); });
   connect(ui->btnSettings, &QPushButton::clicked, this, &MainWindow::openSettings);
@@ -494,7 +519,12 @@ void MainWindow::trayIconActivated(QSystemTrayIcon::ActivationReason reason)
 {
   if (reason != QSystemTrayIcon::Trigger)
     return;
-  isVisible() ? hide() : showAndActivate();
+  if (m_transferIndicator->visualState() == FileTransferIndicator::VisualState::Failed) {
+    showAndActivate();
+    m_transferIndicator->acknowledgeFailure();
+  } else {
+    isVisible() ? hide() : showAndActivate();
+  }
 }
 
 void MainWindow::coreProcessError(CoreProcess::Error error)
@@ -874,7 +904,7 @@ void MainWindow::saveSettings() const
 void MainWindow::setTrayIcon()
 {
   if (deskflow::platform::isWindows()) {
-    m_trayIcon->setIcon(QIcon(QStringLiteral(":/deskflow.ico")));
+    m_transferIndicator->setBaseIcon(QIcon(QStringLiteral(":/deskflow.ico")));
     return;
   }
 
@@ -883,9 +913,9 @@ void MainWindow::setTrayIcon()
   QString themeIcon = kRevFqdnName;
   if (!Settings::value(Settings::Gui::SymbolicTrayIcon).toBool()) {
     if (deskflow::platform::isMac())
-      m_trayIcon->setIcon(QIcon::fromTheme(themeIcon));
+      m_transferIndicator->setBaseIcon(QIcon::fromTheme(themeIcon));
     else
-      m_trayIcon->setIcon(QIcon(fallbackPath.arg(kAppId, QStringLiteral("dark"), themeIcon)));
+      m_transferIndicator->setBaseIcon(QIcon(fallbackPath.arg(kAppId, QStringLiteral("dark"), themeIcon)));
     return;
   }
 
@@ -893,7 +923,7 @@ void MainWindow::setTrayIcon()
 
   auto icon = QIcon::fromTheme(themeIcon, QIcon(fallbackPath.arg(kAppId, iconMode(), themeIcon)));
   icon.setIsMask(true);
-  m_trayIcon->setIcon(icon);
+  m_transferIndicator->setBaseIcon(icon);
 }
 
 void MainWindow::handleLogLine(const QString &line)
@@ -1140,7 +1170,71 @@ void MainWindow::updateConnectionSummary()
   const auto role = mode == CoreMode::Server   ? tr("This computer · Server")
                     : mode == CoreMode::Client ? tr("This computer · Client")
                                                : tr("This computer");
-  m_trayIcon->setToolTip(QStringLiteral("Deskflow FileCopy\n%1\n%2").arg(role, summary));
+  const bool becameConnected = connected && !m_transferConnected;
+  m_transferConnected = connected;
+  m_transferIndicator->setConnected(connected);
+  m_transferIndicator->setConnectionToolTip(QStringLiteral("Deskflow FileCopy\n%1\n%2").arg(role, summary));
+  if (connected && (becameConnected || m_fileTransferWidget->runtimeUnavailable()))
+    updateTransferIndicator();
+}
+
+void MainWindow::updateTransferIndicator()
+{
+  auto status = m_fileTransferWidget->transferStatus();
+  auto metrics = m_fileTransferWidget->transferMetrics();
+  if (m_fileTransferWidget->runtimeUnavailable()) {
+    status = {};
+    status.id = QStringLiteral("file-agent-availability");
+    status.state = QStringLiteral("failed");
+    metrics = {};
+  } else if (m_fileTransferWidget->interrupted()) {
+    status = {};
+    status.id = QStringLiteral("connection-interrupted");
+    status.state = QStringLiteral("failed");
+    metrics = {};
+  }
+  if (status.state == "ready" || status.state == "completed") {
+    if (m_successTransferId != status.id || m_successTransferState != status.state) {
+      m_successTransferId = status.id;
+      m_successTransferState = status.state;
+#ifdef Q_OS_WIN
+      m_successClipboardSequence = GetClipboardSequenceNumber();
+#endif
+    }
+  } else {
+    m_successTransferId.clear();
+    m_successTransferState.clear();
+  }
+  auto detail = m_fileTransferWidget->detailText();
+  if (status.transferring() && !status.awaitingCompletion() && status.bytesTotal > 0) {
+    detail = tr("%1% transferred").arg(metrics.progress / 10);
+    if (metrics.bytesPerSecond)
+      detail +=
+          QStringLiteral(" · %1/s").arg(QLocale().formattedDataSize(static_cast<qint64>(*metrics.bytesPerSecond)));
+  }
+  m_transferIndicator->apply(status, metrics, m_fileTransferWidget->statusText(), detail);
+}
+
+bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr *result)
+{
+#ifdef Q_OS_WIN
+  static const auto taskbarCreated = RegisterWindowMessageW(L"TaskbarButtonCreated");
+  const auto *native = static_cast<MSG *>(message);
+  if (native && taskbarCreated && native->message == taskbarCreated && m_transferIndicator) {
+    m_transferIndicator->setWindowId(winId());
+    m_transferIndicator->refreshTaskbar();
+  }
+#endif
+  return QMainWindow::nativeEvent(eventType, message, result);
+}
+
+void MainWindow::showEvent(QShowEvent *event)
+{
+  QMainWindow::showEvent(event);
+  if (m_transferIndicator) {
+    m_transferIndicator->setWindowId(winId());
+    m_transferIndicator->refreshTaskbar();
+  }
 }
 
 void MainWindow::updateDeviceOverview()
@@ -1304,6 +1398,10 @@ void MainWindow::coreConnectionStateChanged(ConnectionState state)
 {
   qDebug() << "core connection state changed:" << static_cast<int>(state);
 
+  if (state != ConnectionState::Connected) {
+    m_fileTransferWidget->setCoreStopped();
+    m_fileTransferWidget->clearClipboardResult();
+  }
   updateStatus();
 
   // always assume connection is not secure when connection changes

@@ -428,6 +428,10 @@ Do you want to connect to the server?
 <context>
     <name>MainWindow</name>
     <message>
+        <source>%1% transferred</source>
+        <translation>已传输 %1%</translation>
+    </message>
+    <message>
         <source>This computer&apos;s name:</source>
         <translation>此计算机名称：</translation>
     </message>
@@ -2012,6 +2016,18 @@ Enabling this setting will disable the server config GUI.</source>
 </context>
 <context>
     <name>deskflow::gui::FileTransferWidget</name>
+    <message>
+        <source>File copying temporarily unavailable</source>
+        <translation>文件复制暂不可用</translation>
+    </message>
+    <message>
+        <source>Waiting for the signed-in desktop. File copying will recover automatically.</source>
+        <translation>正在等待用户桌面登录，文件复制将自动恢复。</translation>
+    </message>
+    <message>
+        <source>The file agent is unavailable. Retrying automatically; keyboard and mouse sharing can continue.</source>
+        <translation>文件代理暂不可用，正在自动重试；键鼠共享可继续使用。</translation>
+    </message>
     <message>
         <source>%1 h %2 min</source>
         <translation>%1 小时 %2 分钟</translation>

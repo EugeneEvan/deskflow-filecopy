@@ -5,7 +5,6 @@
 #include "deskflow/WindowsFileAgentTransport.h"
 #ifdef Q_OS_WIN
 #define WIN32_LEAN_AND_MEAN
-#include <QDebug>
 #include <UserEnv.h>
 #include <Windows.h>
 #include <WtsApi32.h>
@@ -85,6 +84,8 @@ struct WindowsTransport::State : std::enable_shared_from_this<State>
   std::mutex mutex;
   std::condition_variable changed;
   std::atomic_bool stopping{false};
+  std::atomic_bool launchFinished{true};
+  Failure failure{QStringLiteral("File agent stopped"), 0};
   Wake wake;
   HANDLE input = nullptr;
   HANDLE output = nullptr;
@@ -94,6 +95,13 @@ struct WindowsTransport::State : std::enable_shared_from_this<State>
   qsizetype outgoingBytes = 0;
   std::vector<Message> incoming;
   qsizetype incomingBytes = 0;
+
+  bool launchFailed(const char *reason, DWORD error = GetLastError())
+  {
+    std::lock_guard lock(mutex);
+    failure = {QString::fromLatin1(reason), error};
+    return false;
+  }
 
   void stop()
   {
@@ -194,27 +202,24 @@ struct WindowsTransport::State : std::enable_shared_from_this<State>
     DWORD tokenSession = 0, length = 0;
     if (processIdentity() != ProcessIdentity::System || !ProcessIdToSessionId(GetCurrentProcessId(), &session) ||
         !session) {
-      qWarning() << "File agent requires an interactive SYSTEM core" << GetLastError();
-      return false;
+      return launchFailed("File agent requires an interactive SYSTEM core", ERROR_ACCESS_DENIED);
     }
     if (!WTSQueryUserToken(session, &token.value)) {
-      qWarning() << "File agent WTSQueryUserToken failed" << GetLastError();
-      return false;
+      return launchFailed("File agent WTSQueryUserToken failed");
     }
     if (identity(token.value) != ProcessIdentity::User ||
         !GetTokenInformation(token.value, TokenSessionId, &tokenSession, sizeof(tokenSession), &length) ||
         tokenSession != session) {
-      qWarning() << "File agent user token session validation failed" << GetLastError();
-      return false;
+      return launchFailed("File agent user token session validation failed", ERROR_ACCESS_DENIED);
     }
     std::array<wchar_t, 32768> module{};
     const auto count = GetModuleFileNameW(nullptr, module.data(), DWORD(module.size()));
     if (!count || count >= module.size())
-      return false;
+      return launchFailed("File agent module path unavailable");
     std::wstring executable(module.data(), count);
     const auto slash = executable.find_last_of(L"\\/");
     if (slash == std::wstring::npos)
-      return false;
+      return launchFailed("File agent module directory unavailable", ERROR_PATH_NOT_FOUND);
     const auto directory = executable.substr(0, slash);
     executable = directory + L"\\deskflow-file-agent.exe";
     Handle parentRead, parentWrite, childRead, childWrite;
@@ -223,22 +228,22 @@ struct WindowsTransport::State : std::enable_shared_from_this<State>
         !CreatePipe(&parentRead.value, &childWrite.value, &attributes, 64 * 1024) ||
         !SetHandleInformation(parentRead.value, HANDLE_FLAG_INHERIT, 0) ||
         !SetHandleInformation(parentWrite.value, HANDLE_FLAG_INHERIT, 0))
-      return false;
+      return launchFailed("File agent pipe setup failed");
     SIZE_T attributeBytes = 0;
     InitializeProcThreadAttributeList(nullptr, 1, 0, &attributeBytes);
     std::vector<unsigned char> storage(attributeBytes);
     auto list = reinterpret_cast<LPPROC_THREAD_ATTRIBUTE_LIST>(storage.data());
     if (!InitializeProcThreadAttributeList(list, 1, 0, &attributeBytes))
-      return false;
+      return launchFailed("File agent process attributes failed");
     const HANDLE handles[]{childRead.value, childWrite.value};
     const bool handlesSet = UpdateProcThreadAttribute(
         list, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, const_cast<HANDLE *>(handles), sizeof(handles), nullptr, nullptr
     );
     void *environment = nullptr;
     if (!handlesSet || !CreateEnvironmentBlock(&environment, token.value, FALSE)) {
-      qWarning() << "File agent handle list or CreateEnvironmentBlock failed" << GetLastError();
+      const auto error = GetLastError();
       DeleteProcThreadAttributeList(list);
-      return false;
+      return launchFailed("File agent handle list or CreateEnvironmentBlock failed", error);
     }
     STARTUPINFOEXW startup{};
     startup.StartupInfo.cb = sizeof(startup);
@@ -263,16 +268,16 @@ struct WindowsTransport::State : std::enable_shared_from_this<State>
     DestroyEnvironmentBlock(environment);
     DeleteProcThreadAttributeList(list);
     if (!ok) {
-      qWarning() << "File agent job setup or CreateProcessAsUser failed" << createError;
-      return false;
+      return launchFailed("File agent job setup or CreateProcessAsUser failed", createError);
     }
     Handle childProcess{created.hProcess}, childThread{created.hThread};
     ok = AssignProcessToJobObject(newJob.value, created.hProcess) && ResumeThread(created.hThread) != DWORD(-1);
-    if (!ok)
-      qWarning() << "File agent AssignProcessToJobObject or ResumeThread failed" << GetLastError();
+    const auto resumeError = GetLastError();
     {
       std::lock_guard lock(mutex);
       if (!ok || stopping) {
+        if (!ok)
+          failure = {QStringLiteral("File agent AssignProcessToJobObject or ResumeThread failed"), resumeError};
         TerminateProcess(created.hProcess, 1);
         return false;
       }
@@ -287,11 +292,17 @@ struct WindowsTransport::State : std::enable_shared_from_this<State>
 
 WindowsTransport::WindowsTransport(Wake wake) : m_state(std::make_shared<State>(std::move(wake)))
 {
+  m_state->launchFinished = false;
   std::thread([state = m_state] {
-    if (!state->launch())
-      state->stop();
-    else
-      state->runPipes();
+    if (!state->stopping) {
+      if (!state->launch())
+        state->stop();
+      else
+        state->runPipes();
+    }
+    state->launchFinished = true;
+    if (state->wake)
+      state->wake();
   }).detach();
 }
 WindowsTransport::WindowsTransport(HANDLE input, HANDLE output, Wake wake)
@@ -314,6 +325,15 @@ void WindowsTransport::stop()
 bool WindowsTransport::failed() const
 {
   return m_state->stopping;
+}
+bool WindowsTransport::launchFinished() const
+{
+  return m_state->launchFinished;
+}
+WindowsTransport::Failure WindowsTransport::failure() const
+{
+  std::lock_guard lock(m_state->mutex);
+  return m_state->failure;
 }
 bool WindowsTransport::send(const Message &message)
 {

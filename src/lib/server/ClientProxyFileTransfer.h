@@ -30,5 +30,7 @@ private:
   OptionsList m_lastOptions;
   bool m_haveOptions = false;
   bool m_advertised = false;
+  bool m_everAdvertised = false;
   bool m_negotiated = false;
+  bool m_everNegotiated = false;
 };

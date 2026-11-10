@@ -14,3 +14,4 @@
 void ipcSendToClient(const QString &command, const QString &args = "", bool replacePending = false);
 void ipcSendConnectionState(deskflow::core::ConnectionState state);
 void ipcSendConnectionEndpoints(const QJsonArray &endpoints);
+void ipcSendFileTransferAvailability(bool available, const QString &reason);

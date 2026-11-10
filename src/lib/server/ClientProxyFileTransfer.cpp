@@ -49,6 +49,7 @@ void ClientProxyFileTransfer::setOptions(const OptionsList &options)
   }
   m_advertised = m_transfer.available();
   if (m_advertised) {
+    m_everAdvertised = true;
     advertised.push_back(kOptionFileCopy);
     advertised.push_back(kFileCopyCapability);
   } else {
@@ -70,19 +71,28 @@ void ClientProxyFileTransfer::resetOptions()
 bool ClientProxyFileTransfer::parseMessage(const uint8_t *code)
 {
   if (std::memcmp(code, kMsgCFileCopyHello, 4) == 0) {
-    if (!m_advertised || m_negotiated || getCurrentMessageSize() != 4 || !m_transfer.available()) {
+    if (getCurrentMessageSize() != 4 || (!m_advertised && !m_everAdvertised)) {
       throw BadClientException();
     }
+    if (!m_advertised || !m_transfer.available())
+      return true;
+    // A replacement user agent reuses the authenticated keyboard connection.
+    // Revoke the previous file lifetime before acknowledging the fresh hello.
+    if (m_negotiated)
+      m_transfer.setNegotiated(false);
     ProtocolUtil::writef(getStream(), kMsgCFileCopyAck);
     m_negotiated = true;
+    m_everNegotiated = true;
     m_transfer.setNegotiated(true);
     return true;
   }
   if (std::memcmp(code, kMsgDFileCopy, 4) == 0) {
-    if (!m_negotiated) {
+    if (!m_negotiated && !m_everNegotiated) {
       throw BadClientException();
     }
     const auto payload = deskflow::filetransfer::readFrame(getStream(), getCurrentMessageSize());
+    if (!m_negotiated)
+      return true;
     if (m_server->canTransferFiles()) {
       m_transfer.receive(payload);
     } else {

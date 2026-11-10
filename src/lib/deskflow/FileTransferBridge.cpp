@@ -24,6 +24,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QUuid>
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <exception>
@@ -93,7 +94,8 @@ FileTransferBridge::FileTransferBridge(
     : m_events(events),
       m_stream(stream),
       m_publish(std::move(publish)),
-      m_sourceLifetime(std::move(sourceAllowed)),
+      m_sourceAllowed(std::move(sourceAllowed)),
+      m_sourceLifetime(m_sourceAllowed),
       m_cancelGeneration(cancelGeneration.load()),
       m_receiveToken(++receiveToken),
       m_wakeState(std::make_shared<WakeState>(events, this, m_receiveToken))
@@ -117,18 +119,14 @@ FileTransferBridge::FileTransferBridge(
   });
 #ifdef Q_OS_WIN
   m_system = fileagent::processIdentity() == fileagent::ProcessIdentity::System;
-  if (m_system && enabled()) {
-    m_agentStarted = std::chrono::steady_clock::now();
-    m_agent = std::make_unique<fileagent::WindowsTransport>([state = m_wakeState] { state->notify(); });
-    fileagent::Message configuration{fileagent::Type::Configure};
-    configuration.text = Settings::value(Settings::Core::FileTransferCachePath).toString();
-    const auto limit = Settings::value(Settings::Core::FileTransferCacheLimitGiB).toInt();
-    configuration.cacheLimit = limit > 0 ? quint64(limit) * FileTransferCache::gibibyte : 0;
-    m_agent->send(configuration);
+  if (m_system) {
+    if (enabled())
+      startAgent();
     m_timer = m_events->newTimer(0.1, nullptr);
     m_events->addHandler(EventTypes::Timer, m_timer, [this](const auto &) { tick(); });
   }
 #endif
+  availabilityChanged();
 }
 
 FileTransferBridge::~FileTransferBridge()
@@ -145,7 +143,7 @@ FileTransferBridge::~FileTransferBridge()
     m_events->deleteTimer(m_timer);
   }
   if (m_active) {
-    FileTransferSession::Progress update{FileTransferSession::State::Cancelled};
+    FileTransferSession::Progress update{FileTransferSession::State::Failed};
     update.id = m_id;
     update.detail = QStringLiteral("Connection closed");
     progress(update);
@@ -234,6 +232,7 @@ uint32_t FileTransferBridge::clipboardSequence()
 void FileTransferBridge::setNegotiated(bool negotiated)
 {
   m_negotiated = negotiated && available();
+  availabilityChanged();
   if (!m_negotiated) {
     cancelSession(QStringLiteral("File sharing is unavailable"));
     m_active = false;
@@ -292,6 +291,7 @@ void FileTransferBridge::offer(const IClipboard *clipboard)
   m_clipboardSequence = clipboardSequence();
   m_active = true;
   m_publishFailed = false;
+  m_id.clear();
   ++m_generation;
   m_session->startSend(paths);
 }
@@ -329,9 +329,8 @@ void FileTransferBridge::dispatchReceived(const QByteArray &payload, uint32_t se
     m_publishFailed = m_system;
     m_active = true;
     ++m_generation;
-    m_publication.begin(
-        m_generation, m_clipboardSequence, QUuid::fromRfc4122(payload.mid(6, 16)).toString(QUuid::WithoutBraces)
-    );
+    m_id = QUuid::fromRfc4122(payload.mid(6, 16)).toString(QUuid::WithoutBraces);
+    m_publication.begin(m_generation, m_clipboardSequence, m_id);
   }
 #ifdef Q_OS_WIN
   if (m_system) {
@@ -361,6 +360,8 @@ void FileTransferBridge::sourceClipboardChanged()
   // subsequent changes, including text/empty clipboards invisible to SYSTEM.
   if (m_system && m_active && m_clipboardSequence == clipboardSequence())
     return;
+  if (m_clipboardSequence != clipboardSequence())
+    clipboardChanged();
   cancel(QStringLiteral("Clipboard changed; previous transfer cancelled"));
 }
 
@@ -376,6 +377,7 @@ void FileTransferBridge::sourceChanged(const fileagent::Message &message)
     LOG_DEBUG("file agent source skipped: reason=stale-or-unavailable");
     return;
   }
+  clipboardChanged();
   LOG_DEBUG(
       "file agent source: files=%d roots=%zu sequence=%lu", message.type == fileagent::Type::SourceClipboardFiles,
       static_cast<size_t>(message.roots.size()), static_cast<unsigned long>(message.sequence)
@@ -387,6 +389,7 @@ void FileTransferBridge::sourceChanged(const fileagent::Message &message)
     return;
   m_active = true;
   m_publishFailed = false;
+  m_id.clear();
   fileagent::Message start{fileagent::Type::StartSend};
   start.generation = ++m_generation;
   start.sourceRevision = message.sourceRevision;
@@ -459,9 +462,33 @@ void FileTransferBridge::sendFrame(const QByteArray &bytes)
 void FileTransferBridge::pumpAgent()
 {
 #ifdef Q_OS_WIN
-  if (!m_agent)
+  const auto now = std::chrono::steady_clock::now();
+  if (!enabled()) {
+    if (m_agent) {
+      m_agent->stop();
+      invalidateAgent();
+      m_retiringAgent = std::move(m_agent);
+      try {
+        if (m_readyCallback)
+          m_readyCallback();
+      } catch (const std::exception &) {
+        qWarning() << "File agent capability withdrawal failed";
+      }
+    }
+    availabilityChanged();
     return;
-  if (!m_agentReady && std::chrono::steady_clock::now() - m_agentStarted > std::chrono::seconds(10))
+  }
+  if (!m_agent) {
+    // A slow OS launch may still be returning after its Ready timeout. Do not
+    // accumulate detached launch workers while waiting for it to finish.
+    if (m_retiringAgent && !m_retiringAgent->launchFinished())
+      return;
+    m_retiringAgent.reset();
+    if (now < m_agentRetryAt)
+      return;
+    startAgent();
+  }
+  if (!m_agentReady && now - m_agentStarted > std::chrono::seconds(10))
     m_agent->stop();
   for (const auto &message : m_agent->take()) {
     if (m_agent->failed())
@@ -473,6 +500,9 @@ void FileTransferBridge::pumpAgent()
         break;
       }
       m_agentReady = true;
+      m_agentFailureReported = false;
+      m_lastAgentFailure.clear();
+      m_lastAgentError = 0;
       try {
         if (m_readyCallback)
           m_readyCallback();
@@ -480,6 +510,7 @@ void FileTransferBridge::pumpAgent()
         qWarning() << "File agent capability update failed";
         m_agent->stop();
       }
+      availabilityChanged();
       continue;
     }
     if (!m_agentReady || (message.type != Send && message.type != Progress && message.type != Published &&
@@ -517,23 +548,85 @@ void FileTransferBridge::pumpAgent()
       }
     }
   }
-  if (m_agent->failed() && !m_agentFailureReported) {
+  if (m_agent->failed()) {
+    const auto failure = m_agent->failure();
+    if (!m_agentFailureReported || failure.reason != m_lastAgentFailure || failure.error != m_lastAgentError) {
+      qWarning() << "File agent unavailable; automatic recovery scheduled" << failure.reason << failure.error;
+      m_lastAgentFailure = failure.reason;
+      m_lastAgentError = failure.error;
+    }
+    const bool notify = !m_agentFailureReported;
+    invalidateAgent();
+    m_retiringAgent = std::move(m_agent);
     m_agentFailureReported = true;
-    m_agentReady = false;
-    m_negotiated = false;
-    m_publication.cancel();
-    FileTransferSession::Progress update{FileTransferSession::State::Failed};
-    update.id = m_id;
-    update.detail = QStringLiteral("User file agent unavailable; file sharing disabled");
-    progress(update);
+    m_agentRetryAt = now + m_agentRetryDelay;
+    m_agentRetryDelay = (std::min)(m_agentRetryDelay * 2, std::chrono::seconds(30));
+    availabilityChanged();
     try {
-      if (m_readyCallback)
+      if (notify && m_readyCallback)
         m_readyCallback();
     } catch (const std::exception &) {
       qWarning() << "File agent capability withdrawal failed";
     }
+  } else if (m_agentReady && now - m_agentStarted >= std::chrono::seconds(30)) {
+    // A process that repeatedly sends Ready then exits must still back off.
+    m_agentRetryDelay = std::chrono::seconds(1);
   }
 #endif
+}
+
+void FileTransferBridge::startAgent()
+{
+#ifdef Q_OS_WIN
+  m_agentStarted = std::chrono::steady_clock::now();
+  m_agent = std::make_unique<fileagent::WindowsTransport>([state = m_wakeState] { state->notify(); });
+  fileagent::Message configuration{fileagent::Type::Configure};
+  configuration.text = Settings::value(Settings::Core::FileTransferCachePath).toString();
+  const auto limit = Settings::value(Settings::Core::FileTransferCacheLimitGiB).toInt();
+  configuration.cacheLimit = limit > 0 ? quint64(limit) * FileTransferCache::gibibyte : 0;
+  m_agent->send(configuration);
+  availabilityChanged();
+#endif
+}
+
+void FileTransferBridge::invalidateAgent()
+{
+  const bool hadTransfer = active();
+  // Old queued envelopes and publications cannot enter a replacement process.
+  // Its clipboard tracker starts from the native sequence at process creation.
+  cancelSession(QStringLiteral("User file agent unavailable; transfer cancelled"));
+  m_active = false;
+  m_agentReady = false;
+  m_negotiated = false;
+  m_pendingSource.reset();
+  m_sourceLifetime = fileagent::SourceNotificationLifetime(m_sourceAllowed);
+  m_publishedRoots.clear();
+  if (hadTransfer) {
+    FileTransferSession::Progress update{FileTransferSession::State::Failed};
+    update.id = m_id;
+    update.detail = QStringLiteral("User file agent unavailable; transfer cancelled");
+    progress(update);
+  }
+  m_id.clear();
+}
+
+void FileTransferBridge::availabilityChanged()
+{
+  const bool usable = available();
+  const auto reason = !enabled()               ? QStringLiteral("disabled")
+                      : usable                 ? QStringLiteral("available")
+                      : m_agentFailureReported ? QStringLiteral("agentUnavailable")
+                                               : QStringLiteral("agentStarting");
+  if (reason == m_availabilityReason)
+    return;
+  m_availabilityReason = reason;
+  ipcSendFileTransferAvailability(usable, reason);
+}
+
+void FileTransferBridge::clipboardChanged()
+{
+  if (core::ipc::CoreIpcServer::available())
+    ipcSendToClient(QStringLiteral("fileTransferClipboardChanged"), {}, true);
 }
 
 void FileTransferBridge::publish(const QStringList &paths)

@@ -81,6 +81,14 @@ create_test(
 set_tests_properties(FileTransferSessionTests PROPERTIES TIMEOUT 90)
 
 create_test(
+  NAME FileAgentRecoveryTests
+  DEPENDS app
+  LIBS arch base io ${extra_libs}
+  SOURCE FileAgentRecoveryTests.cpp
+  WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/deskflow"
+)
+
+create_test(
   NAME FileTransferProtocolTests
   DEPENDS app
   LIBS arch base ${extra_libs}

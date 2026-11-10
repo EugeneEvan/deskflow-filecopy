@@ -29,10 +29,21 @@ public:
   // Availability reflects the configured feature, not the connection state.
   // Existing transfer results remain visible when the setting changes.
   void setAvailable(bool enabled);
+  void setRuntimeAvailability(const QString &json);
+  void clearClipboardResult();
+  const FileTransferProgressModel::Status &transferStatus() const;
+  FileTransferProgressModel::Metrics transferMetrics() const;
+  QString statusText() const;
+  QString detailText() const;
+  bool runtimeUnavailable() const;
+  bool interrupted() const
+  {
+    return m_interrupted;
+  }
 
 Q_SIGNALS:
   void cancelRequested();
-  void notification(const QString &title, const QString &message, bool failed);
+  void presentationChanged();
   void cacheChanged();
 
 protected:
@@ -55,8 +66,9 @@ private:
   FileTransferProgressModel m_model;
   QElapsedTimer m_clock;
   QTimer m_timer;
-  QString m_lastNotificationId;
-  QString m_lastNotificationState;
+  QString m_runtimeReason;
+  QString m_invalidatedResultId;
+  QString m_invalidatedResultState;
   QString m_lastReadyId;
   bool m_hasReady = false;
   bool m_available = false;

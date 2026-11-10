@@ -114,6 +114,10 @@ void FileTransferWidget::setStatus(const QString &json)
     qWarning("invalid file transfer status from core ipc");
     return;
   }
+  const auto object = document.object();
+  if (!m_invalidatedResultState.isEmpty() && object.value(QStringLiteral("id")).toString() == m_invalidatedResultId &&
+      object.value(QStringLiteral("state")).toString() == m_invalidatedResultState)
+    return;
   const auto previousId = m_model.status().id;
   const auto previousState = m_model.status().state;
   if (!m_model.update(document.object(), m_clock.elapsed())) {
@@ -122,6 +126,10 @@ void FileTransferWidget::setStatus(const QString &json)
   }
 
   const auto status = m_model.status();
+  if (status.id != m_invalidatedResultId) {
+    m_invalidatedResultId.clear();
+    m_invalidatedResultState.clear();
+  }
   const bool changed = previousId != status.id || previousState != status.state;
   m_interrupted = false;
   if (changed)
@@ -137,12 +145,6 @@ void FileTransferWidget::setStatus(const QString &json)
   if (changed || !status.active())
     updateDisplay();
 
-  if ((status.state == "ready" || status.state == "completed" || status.state == "failed") &&
-      (m_lastNotificationId != status.id || m_lastNotificationState != status.state)) {
-    m_lastNotificationId = status.id;
-    m_lastNotificationState = status.state;
-    Q_EMIT notification(m_statusLabel->text(), m_detailLabel->text(), status.state == "failed");
-  }
   if (status.state == "ready" && (!m_hasReady || m_lastReadyId != status.id)) {
     m_hasReady = true;
     m_lastReadyId = status.id;
@@ -150,11 +152,74 @@ void FileTransferWidget::setStatus(const QString &json)
   }
 }
 
+const FileTransferProgressModel::Status &FileTransferWidget::transferStatus() const
+{
+  return m_model.status();
+}
+
+FileTransferProgressModel::Metrics FileTransferWidget::transferMetrics() const
+{
+  return m_model.metrics(m_clock.elapsed());
+}
+
+QString FileTransferWidget::statusText() const
+{
+  return m_statusLabel->text();
+}
+
+QString FileTransferWidget::detailText() const
+{
+  return m_detailLabel->text();
+}
+
+bool FileTransferWidget::runtimeUnavailable() const
+{
+  return m_runtimeReason == "agentStarting" || m_runtimeReason == "agentUnavailable";
+}
+
+void FileTransferWidget::clearClipboardResult()
+{
+  const auto &status = m_model.status();
+  if (status.state != "ready" && status.state != "completed")
+    return;
+  m_invalidatedResultId = status.id;
+  m_invalidatedResultState = status.state;
+  m_model.reset();
+  updateDisplay();
+}
+
+void FileTransferWidget::setRuntimeAvailability(const QString &json)
+{
+  const auto document = QJsonDocument::fromJson(json.toUtf8());
+  if (!document.isObject() || !document.object().value(QStringLiteral("available")).isBool())
+    return;
+  const auto object = document.object();
+  const auto available = object.value(QStringLiteral("available")).toBool();
+  const auto reason = object.value(QStringLiteral("reason")).toString();
+  if (reason != "available" && reason != "disabled" && reason != "agentStarting" && reason != "agentUnavailable")
+    return;
+  const auto nextReason = available ? QString() : reason;
+  if (m_runtimeReason == nextReason)
+    return;
+  m_runtimeReason = nextReason;
+  // An old success/transfer belongs to the previous agent lifetime.
+  m_timer.stop();
+  m_model.reset();
+  m_cancelling = false;
+  m_interrupted = false;
+  updateDisplay();
+}
+
 void FileTransferWidget::setCoreStopped()
 {
+  const bool hadRuntimeReason = !m_runtimeReason.isEmpty();
+  m_runtimeReason.clear();
   m_timer.stop();
-  if (!m_model.status().active())
+  if (!m_model.status().active()) {
+    if (hadRuntimeReason)
+      updateDisplay();
     return;
+  }
   m_model.reset();
   m_cancelling = false;
   m_interrupted = true;
@@ -208,7 +273,13 @@ void FileTransferWidget::updateDisplay()
 
   QString message;
   QString detail;
-  if (m_interrupted) {
+  if (runtimeUnavailable()) {
+    message = tr("File copying temporarily unavailable");
+    detail =
+        m_runtimeReason == "agentStarting"
+            ? tr("Waiting for the signed-in desktop. File copying will recover automatically.")
+            : tr("The file agent is unavailable. Retrying automatically; keyboard and mouse sharing can continue.");
+  } else if (m_interrupted) {
     message = tr("File transfer interrupted");
     detail = tr("The connection stopped before the transfer finished. Reconnect, then copy the files again.");
   } else if (state.isEmpty()) {
@@ -281,6 +352,7 @@ void FileTransferWidget::updateDisplay()
   m_progress->setVisible(!state.isEmpty());
   m_progress->setAccessibleName(message);
   m_progress->setAccessibleDescription(detail);
+  Q_EMIT presentationChanged();
 }
 
 } // namespace deskflow::gui

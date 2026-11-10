@@ -13,7 +13,10 @@ class FileTransferWidgetTests : public QObject
 private Q_SLOTS:
   void idleAndDisabledShowInstructions();
   void cancelWaitsForStateChange();
-  void terminalNotificationsAreNotRepeated();
+  void terminalStatesUpdatePresentationAndCache();
+  void agentAvailabilityRecoversWithoutStaleSuccess();
+  void agentRecoveryAfterCoreDisconnectClearsWarning();
+  void invalidatedClipboardDoesNotReplayOldSuccess();
   void stoppedCoreInterruptsActiveTransfer();
   void unknownFileTotalIsNotShownAsZero();
   void confirmationMustArriveBeforeFullProgress();

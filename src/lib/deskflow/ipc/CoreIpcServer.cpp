@@ -48,6 +48,11 @@ void CoreIpcServer::setConnectionEndpoints(const QString &json)
 void CoreIpcServer::processCommand(QLocalSocket *clientSocket, const QString &command, const QStringList &parts)
 {
   Q_UNUSED(parts)
+  if (command == QStringLiteral("getFileTransferAvailability")) {
+    if (!m_fileTransferAvailability.isEmpty())
+      writeToClientSocket(clientSocket, QStringLiteral("fileTransferAvailability=%1").arg(m_fileTransferAvailability));
+    return;
+  }
   if (command == QStringLiteral("getConnectionEndpoints")) {
     writeToClientSocket(clientSocket, QStringLiteral("connectionEndpoints=%1").arg(m_connectionEndpoints));
     return;
@@ -65,6 +70,14 @@ void CoreIpcServer::processCommand(QLocalSocket *clientSocket, const QString &co
     return;
   }
   LOG_WARN("core ipc server got unknown command: %s", command.toUtf8().constData());
+}
+
+void CoreIpcServer::setFileTransferAvailability(const QString &json)
+{
+  if (m_fileTransferAvailability == json)
+    return;
+  m_fileTransferAvailability = json;
+  broadcastCommand(QStringLiteral("fileTransferAvailability"), json, true);
 }
 
 } // namespace deskflow::core::ipc

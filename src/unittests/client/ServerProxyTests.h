@@ -24,6 +24,8 @@ private Q_SLOTS:
   void fileCopyOptionsRequireMatchingCapability();
   void fileCopyDisabledDoesNotSendHello();
   void fileCopyAcknowledgmentUsesMessageParser();
+  void withdrawnFileCopyIgnoresLateFrames();
+  void unavailableFileAgentIgnoresPendingAcknowledgment();
   void receivedFilesReplaceOwnedClipboard_data();
   void receivedFilesReplaceOwnedClipboard();
   void alreadyPublishedFilesReplaceOwnedClipboard();

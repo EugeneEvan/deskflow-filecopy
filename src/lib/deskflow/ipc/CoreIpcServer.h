@@ -26,10 +26,12 @@ public:
   static CoreIpcServer &instance();
   static bool available();
   void setConnectionEndpoints(const QString &json);
+  void setFileTransferAvailability(const QString &json);
 
 private:
   void processCommand(QLocalSocket *clientSocket, const QString &command, const QStringList &parts) override;
   QString m_connectionEndpoints = QStringLiteral("[]");
+  QString m_fileTransferAvailability;
 };
 
 } // namespace deskflow::core::ipc

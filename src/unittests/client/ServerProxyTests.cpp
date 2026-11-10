@@ -658,6 +658,56 @@ void ServerProxyTests::fileCopyAcknowledgmentUsesMessageParser()
   QCOMPARE(events.addedEvents().front().getType(), EventTypes::ClientDisconnectRequested);
 }
 
+void ServerProxyTests::withdrawnFileCopyIgnoresLateFrames()
+{
+#ifndef Q_OS_WIN
+  QSKIP("File copying is currently Windows only");
+#endif
+  Settings::setValue(Settings::Core::FileTransferEnabled, true);
+  Settings::setValue(Settings::Security::TlsEnabled, true);
+  Settings::setValue(Settings::Server::EnableClipboard, true);
+  RecordingEventQueue events;
+  FakeStream stream;
+  TestFileServerProxy proxy(undereferenceableClient(), &stream, &events);
+  proxy.onOptionsChanged({kOptionFileCopy, kFileCopyCapability});
+  stream.takeOutput();
+  stream.push("FCHA");
+  events.dispatchEvent(Event(EventTypes::StreamInputReady, stream.getEventTarget()));
+  QVERIFY(proxy.canTransferFiles());
+  proxy.onOptionsChanged({});
+  QVERIFY(!proxy.canTransferFiles());
+  stream.push(std::string("FCDT\0\0\0\1x", 9));
+  events.dispatchEvent(Event(EventTypes::StreamInputReady, stream.getEventTarget()));
+  QVERIFY(events.addedEvents().empty());
+  proxy.onOptionsChanged({kOptionFileCopy, kFileCopyCapability});
+  QCOMPARE(stream.takeOutput(), std::string("FCHL"));
+  stream.push("FCHA");
+  events.dispatchEvent(Event(EventTypes::StreamInputReady, stream.getEventTarget()));
+  QVERIFY(proxy.canTransferFiles());
+}
+
+void ServerProxyTests::unavailableFileAgentIgnoresPendingAcknowledgment()
+{
+#ifndef Q_OS_WIN
+  QSKIP("File copying is currently Windows only");
+#endif
+  Settings::setValue(Settings::Core::FileTransferEnabled, true);
+  Settings::setValue(Settings::Security::TlsEnabled, true);
+  Settings::setValue(Settings::Server::EnableClipboard, true);
+  RecordingEventQueue events;
+  FakeStream stream;
+  TestFileServerProxy proxy(undereferenceableClient(), &stream, &events);
+  proxy.onOptionsChanged({kOptionFileCopy, kFileCopyCapability});
+  QCOMPARE(stream.takeOutput(), std::string("FCHL"));
+  Settings::setValue(Settings::Core::FileTransferEnabled, false);
+  stream.push("FCHA");
+  events.dispatchEvent(Event(EventTypes::StreamInputReady, stream.getEventTarget()));
+  const bool disconnected = !events.addedEvents().empty();
+  Settings::setValue(Settings::Core::FileTransferEnabled, true);
+  QVERIFY(!disconnected);
+  QVERIFY(!proxy.canTransferFiles());
+}
+
 void ServerProxyTests::receivedFilesReplaceOwnedClipboard_data()
 {
   QTest::addColumn<QString>("interruption");

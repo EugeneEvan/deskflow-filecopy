@@ -30,4 +30,6 @@ private:
   bool m_advertised = false;
   bool m_requested = false;
   bool m_negotiated = false;
+  bool m_everNegotiated = false;
+  bool m_recovering = false;
 };

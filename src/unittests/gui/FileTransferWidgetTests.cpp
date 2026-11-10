@@ -88,30 +88,69 @@ void FileTransferWidgetTests::cancelWaitsForStateChange()
   QCOMPARE(statusLabel(widget)->text(), FileTransferWidget::tr("Sending files"));
 }
 
-void FileTransferWidgetTests::terminalNotificationsAreNotRepeated()
+void FileTransferWidgetTests::terminalStatesUpdatePresentationAndCache()
 {
   FileTransferWidget widget;
-  QSignalSpy notifications(&widget, &FileTransferWidget::notification);
+  QSignalSpy presentations(&widget, &FileTransferWidget::presentationChanged);
   QSignalSpy caches(&widget, &FileTransferWidget::cacheChanged);
   widget.setStatus(status("ready", 10000));
   widget.setStatus(status("ready", 10000));
-  QCOMPARE(notifications.count(), 1);
-  QCOMPARE(notifications.first().at(2).toBool(), false);
+  QVERIFY(presentations.count() > 0);
   QCOMPARE(caches.count(), 1);
   widget.setCoreStopped();
   widget.setStatus(status("ready", 10000));
-  QCOMPARE(notifications.count(), 1);
   QCOMPARE(caches.count(), 1);
   widget.setStatus(status("completed", 10000, 10000, "sent"));
   widget.setStatus(status("completed", 10000, 10000, "sent"));
-  QCOMPARE(notifications.count(), 2);
   QCOMPARE(caches.count(), 1);
   widget.setStatus(status("failed", 0, 10000, "failed"));
   widget.setStatus(status("failed", 0, 10000, "failed"));
-  QCOMPARE(notifications.count(), 3);
-  QCOMPARE(notifications.last().at(2).toBool(), true);
   widget.setStatus(status("ready", 10000, 10000, "another"));
   QCOMPARE(caches.count(), 2);
+}
+
+void FileTransferWidgetTests::agentAvailabilityRecoversWithoutStaleSuccess()
+{
+  FileTransferWidget widget;
+  widget.setAvailable(true);
+  widget.setStatus(status("ready", 10000));
+  widget.setRuntimeAvailability(QStringLiteral(R"({"available":false,"reason":"agentUnavailable"})"));
+  QVERIFY(widget.runtimeUnavailable());
+  QVERIFY(widget.transferStatus().state.isEmpty());
+  QCOMPARE(widget.statusText(), FileTransferWidget::tr("File copying temporarily unavailable"));
+  widget.setRuntimeAvailability(QStringLiteral(R"({"available":true,"reason":"available"})"));
+  QVERIFY(!widget.runtimeUnavailable());
+  QCOMPARE(widget.statusText(), FileTransferWidget::tr("No active transfer"));
+  QVERIFY(widget.transferStatus().state.isEmpty());
+  widget.setStatus(status("sending", 5000, 10000, "after-recovery"));
+  QCOMPARE(widget.transferMetrics().progress, 500);
+  widget.setRuntimeAvailability(QStringLiteral(R"({"available":"true","reason":"available"})"));
+  QCOMPARE(widget.transferStatus().state, QStringLiteral("sending"));
+}
+
+void FileTransferWidgetTests::agentRecoveryAfterCoreDisconnectClearsWarning()
+{
+  FileTransferWidget widget;
+  widget.setAvailable(true);
+  widget.setRuntimeAvailability(QStringLiteral(R"({"available":false,"reason":"agentUnavailable"})"));
+  widget.setCoreStopped();
+  widget.setRuntimeAvailability(QStringLiteral(R"({"available":true,"reason":"available"})"));
+  QVERIFY(!widget.runtimeUnavailable());
+  QCOMPARE(widget.statusText(), FileTransferWidget::tr("No active transfer"));
+}
+
+void FileTransferWidgetTests::invalidatedClipboardDoesNotReplayOldSuccess()
+{
+  FileTransferWidget widget;
+  widget.setAvailable(true);
+  widget.setStatus(status("ready", 10000, 10000, "received"));
+  widget.clearClipboardResult();
+  QVERIFY(widget.transferStatus().state.isEmpty());
+  widget.setStatus(status("ready", 10000, 10000, "received"));
+  QVERIFY(widget.transferStatus().state.isEmpty());
+  widget.setStatus(status("preparing", 0, 0, "next-copy"));
+  widget.setStatus(status("completed", 10000, 10000, "next-copy"));
+  QCOMPARE(widget.transferStatus().state, QStringLiteral("completed"));
 }
 
 void FileTransferWidgetTests::stoppedCoreInterruptsActiveTransfer()

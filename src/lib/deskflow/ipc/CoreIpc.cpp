@@ -9,6 +9,7 @@
 #include "CoreIpcServer.h"
 
 #include <QJsonDocument>
+#include <QJsonObject>
 #include <QMetaEnum>
 
 void ipcSendConnectionEndpoints(const QJsonArray &endpoints)
@@ -35,6 +36,19 @@ void ipcSendToClient(const QString &command, const QString &args, bool replacePe
         deskflow::core::ipc::CoreIpcServer::instance().broadcastCommand(command, args, replacePending);
       },
       Qt::QueuedConnection
+  );
+}
+
+void ipcSendFileTransferAvailability(bool available, const QString &reason)
+{
+  using deskflow::core::ipc::CoreIpcServer;
+  if (!CoreIpcServer::available())
+    return;
+  const QJsonObject object{{QStringLiteral("available"), available}, {QStringLiteral("reason"), reason}};
+  const auto json = QString::fromUtf8(QJsonDocument(object).toJson(QJsonDocument::Compact));
+  auto &server = CoreIpcServer::instance();
+  QMetaObject::invokeMethod(
+      &server, [json] { CoreIpcServer::instance().setFileTransferAvailability(json); }, Qt::QueuedConnection
   );
 }
 

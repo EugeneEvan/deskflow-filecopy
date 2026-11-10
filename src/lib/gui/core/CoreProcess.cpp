@@ -852,6 +852,10 @@ void CoreProcess::onCoreIpcMessageReceived(const QString &command, const QString
     Q_EMIT missingKeyboardLayouts(args);
   } else if (command == "fileTransfer") {
     Q_EMIT fileTransferStatusChanged(args);
+  } else if (command == "fileTransferAvailability") {
+    Q_EMIT fileTransferAvailabilityChanged(args);
+  } else if (command == "fileTransferClipboardChanged") {
+    Q_EMIT fileTransferClipboardChanged();
   }
 }
 

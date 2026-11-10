@@ -5,6 +5,13 @@ add_subdirectory(config)
 add_subdirectory(core)
 
 create_test(
+  NAME FileTransferIndicatorTests
+  DEPENDS gui
+  SOURCE FileTransferIndicatorTests.cpp
+  WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/gui"
+)
+
+create_test(
   NAME CacheStatusWidgetTests
   DEPENDS gui
   SOURCE CacheStatusWidgetTests.cpp

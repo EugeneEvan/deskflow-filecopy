@@ -27,6 +27,7 @@ private Q_SLOTS:
   void fileCopyNegotiatesThroughMessageParser();
   void fileCopyDisabledDoesNotAdvertiseOrAcknowledge();
   void fileCopyRejectsDataBeforeNegotiation();
+  void withdrawnFileCopyIgnoresLateFrames();
   void fileSelectionDoesNotSendLegacyClipboard();
 
 private:

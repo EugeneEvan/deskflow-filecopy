@@ -4,6 +4,7 @@
  */
 #pragma once
 #include "deskflow/FileAgentProtocol.h"
+#include <cstdint>
 #include <functional>
 #include <memory>
 
@@ -24,12 +25,19 @@ class WindowsTransport
 {
 public:
   using Wake = std::function<void()>;
+  struct Failure
+  {
+    QString reason;
+    uint32_t error = 0;
+  };
   explicit WindowsTransport(Wake wake);
   WindowsTransport(void *input, void *output, Wake wake);
   ~WindowsTransport();
   bool send(const Message &message);
   std::vector<Message> take();
   bool failed() const;
+  bool launchFinished() const;
+  Failure failure() const;
   void stop();
 
 private:

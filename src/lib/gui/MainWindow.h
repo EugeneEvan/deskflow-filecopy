@@ -45,6 +45,7 @@ class DaemonIpcClient;
 namespace deskflow::gui {
 class DeviceOverviewWidget;
 class FileTransferWidget;
+class FileTransferIndicator;
 class CacheStatusWidget;
 } // namespace deskflow::gui
 
@@ -84,6 +85,8 @@ public:
 protected:
   void changeEvent(QEvent *e) override;
   bool eventFilter(QObject *obj, QEvent *event) override;
+  bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override;
+  void showEvent(QShowEvent *event) override;
 
 private:
   /**
@@ -97,6 +100,7 @@ private:
   void coreProcessError(CoreProcess::Error error);
   void coreConnectionStateChanged(ConnectionState state);
   void coreProcessStateChanged(ProcessState state);
+  void updateTransferIndicator();
 
   void trayIconActivated(QSystemTrayIcon::ActivationReason reason);
   void serverConnectionConfigureClient(const QString &clientName);
@@ -197,6 +201,11 @@ private:
   StatusBar *m_statusBar = nullptr;
   deskflow::gui::DeviceOverviewWidget *m_deviceOverview = nullptr;
   deskflow::gui::FileTransferWidget *m_fileTransferWidget = nullptr;
+  deskflow::gui::FileTransferIndicator *m_transferIndicator = nullptr;
+  QString m_successTransferId;
+  QString m_successTransferState;
+  quint32 m_successClipboardSequence = 0;
+  bool m_transferConnected = false;
   deskflow::gui::CacheStatusWidget *m_cacheStatusWidget = nullptr;
   QStringList m_connectedClients;
   bool m_contentFitQueued = false;

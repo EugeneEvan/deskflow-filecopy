@@ -21,6 +21,8 @@ add_library(${target} STATIC
   FileTail.h
   FileTransferProgressModel.cpp
   FileTransferProgressModel.h
+  FileTransferIndicator.cpp
+  FileTransferIndicator.h
   Logger.cpp
   Logger.h
   MainWindow.cpp

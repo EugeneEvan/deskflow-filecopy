@@ -18,6 +18,7 @@
 class IClipboard;
 class IEventQueue;
 class EventQueueTimer;
+class FileAgentRecoveryTests;
 
 namespace deskflow {
 class IStream;
@@ -27,6 +28,8 @@ class Screen;
 // Owns one peer's worker session; never exposes source paths on the wire.
 class FileTransferBridge
 {
+  friend class ::FileAgentRecoveryTests;
+
 public:
   using Publish = std::function<bool(const QStringList &, bool alreadyPublished)>;
   FileTransferBridge(IEventQueue *events, IStream *stream, Publish publish, std::function<bool()> sourceAllowed = {});
@@ -44,7 +47,7 @@ public:
   void sourceClipboardChanged();
   bool active() const
   {
-    return m_active || m_pendingBegins != 0;
+    return m_active || (m_negotiated && m_pendingBegins != 0);
   }
 
 private:
@@ -56,6 +59,10 @@ private:
   void sendFrame(const QByteArray &payload);
   void cancelSession(const QString &reason);
   void pumpAgent();
+  void startAgent();
+  void invalidateAgent();
+  void availabilityChanged();
+  void clipboardChanged();
   void sourceChanged(const fileagent::Message &message);
   static uint32_t clipboardSequence();
 
@@ -66,14 +73,21 @@ private:
   std::unique_ptr<FileTransferSession> m_session;
 #ifdef Q_OS_WIN
   std::unique_ptr<fileagent::WindowsTransport> m_agent;
+  std::unique_ptr<fileagent::WindowsTransport> m_retiringAgent;
 #endif
   bool m_system = false;
   bool m_agentReady = false;
   bool m_agentFailureReported = false;
   std::function<void()> m_readyCallback;
   std::chrono::steady_clock::time_point m_agentStarted{};
+  std::chrono::steady_clock::time_point m_agentRetryAt{};
+  std::chrono::seconds m_agentRetryDelay{1};
+  QString m_lastAgentFailure;
+  uint32_t m_lastAgentError = 0;
+  QString m_availabilityReason;
   uint64_t m_generation = 0;
   fileagent::PublicationLifetime m_publication;
+  std::function<bool()> m_sourceAllowed;
   fileagent::SourceNotificationLifetime m_sourceLifetime;
   std::optional<fileagent::Message> m_pendingSource;
   bool m_negotiated = false;
