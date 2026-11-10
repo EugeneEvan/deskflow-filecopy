@@ -2021,6 +2021,10 @@ Enabling this setting will disable the server config GUI.</source>
         <translation>文件复制暂不可用</translation>
     </message>
     <message>
+        <source>The file agent stopped. Copy the files again after it recovers.</source>
+        <translation>文件代理已停止。恢复后请重新复制这些文件。</translation>
+    </message>
+    <message>
         <source>Waiting for the signed-in desktop. File copying will recover automatically.</source>
         <translation>正在等待用户桌面登录，文件复制将自动恢复。</translation>
     </message>

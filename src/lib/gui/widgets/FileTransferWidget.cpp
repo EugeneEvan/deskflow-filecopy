@@ -202,9 +202,11 @@ void FileTransferWidget::setRuntimeAvailability(const QString &json)
   if (m_runtimeReason == nextReason)
     return;
   m_runtimeReason = nextReason;
-  // An old success/transfer belongs to the previous agent lifetime.
+  // Clear results from the old agent, but retain an interrupted task's failure
+  // so successful agent recovery is not mistaken for a successful transfer.
   m_timer.stop();
-  m_model.reset();
+  if (m_model.status().state != "failed")
+    m_model.reset();
   m_cancelling = false;
   m_interrupted = false;
   updateDisplay();
@@ -310,8 +312,13 @@ void FileTransferWidget::updateDisplay()
     detail = status.error.isEmpty() ? tr("Copy the files again when you are ready to retry.") : status.error;
   } else {
     message = tr("File transfer failed");
-    detail = status.error.isEmpty() ? tr("The transfer could not finish. Check the connection and try copying again.")
-                                    : status.error;
+    if (status.error == "User file agent unavailable; transfer cancelled")
+      detail = tr("The file agent stopped. Copy the files again after it recovers.");
+    else if (status.error == "Connection closed")
+      detail = tr("The connection stopped before the transfer finished. Reconnect, then copy the files again.");
+    else
+      detail = status.error.isEmpty() ? tr("The transfer could not finish. Check the connection and try copying again.")
+                                      : status.error;
   }
   if (m_cancelling)
     message = tr("Cancelling file transfer...");
@@ -347,7 +354,7 @@ void FileTransferWidget::updateDisplay()
   );
   m_statusLabel->setText(message);
   m_detailLabel->setText(detail);
-  m_detailLabel->setVisible(m_interrupted || state == "failed" || !status.error.isEmpty());
+  m_detailLabel->setVisible(runtimeUnavailable() || m_interrupted || state == "failed" || !status.error.isEmpty());
   m_statusLabel->setToolTip(detail);
   m_progress->setVisible(!state.isEmpty());
   m_progress->setAccessibleName(message);

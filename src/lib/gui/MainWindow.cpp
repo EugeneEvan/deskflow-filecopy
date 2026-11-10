@@ -1183,9 +1183,13 @@ void MainWindow::updateTransferIndicator()
   auto status = m_fileTransferWidget->transferStatus();
   auto metrics = m_fileTransferWidget->transferMetrics();
   if (m_fileTransferWidget->runtimeUnavailable()) {
-    status = {};
-    status.id = QStringLiteral("file-agent-availability");
-    status.state = QStringLiteral("failed");
+    // Keep the task identity so acknowledging its failure while the agent is
+    // unavailable also suppresses the same failure after recovery.
+    if (status.state != "failed") {
+      status = {};
+      status.id = QStringLiteral("file-agent-availability");
+      status.state = QStringLiteral("failed");
+    }
     metrics = {};
   } else if (m_fileTransferWidget->interrupted()) {
     status = {};

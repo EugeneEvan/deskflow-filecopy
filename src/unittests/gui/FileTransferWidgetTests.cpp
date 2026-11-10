@@ -139,6 +139,17 @@ void FileTransferWidgetTests::agentRecoveryAfterCoreDisconnectClearsWarning()
   QCOMPARE(widget.statusText(), FileTransferWidget::tr("No active transfer"));
 }
 
+void FileTransferWidgetTests::agentRecoveryPreservesFailedTransfer()
+{
+  FileTransferWidget widget;
+  widget.setAvailable(true);
+  widget.setStatus(status("failed", 5000));
+  widget.setRuntimeAvailability(QStringLiteral(R"({"available":false,"reason":"agentUnavailable"})"));
+  widget.setRuntimeAvailability(QStringLiteral(R"({"available":true,"reason":"available"})"));
+  QCOMPARE(widget.transferStatus().state, QStringLiteral("failed"));
+  QCOMPARE(widget.statusText(), FileTransferWidget::tr("File transfer failed"));
+}
+
 void FileTransferWidgetTests::invalidatedClipboardDoesNotReplayOldSuccess()
 {
   FileTransferWidget widget;

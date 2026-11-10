@@ -16,6 +16,7 @@ private Q_SLOTS:
   void terminalStatesUpdatePresentationAndCache();
   void agentAvailabilityRecoversWithoutStaleSuccess();
   void agentRecoveryAfterCoreDisconnectClearsWarning();
+  void agentRecoveryPreservesFailedTransfer();
   void invalidatedClipboardDoesNotReplayOldSuccess();
   void stoppedCoreInterruptsActiveTransfer();
   void unknownFileTotalIsNotShownAsZero();
