@@ -21,6 +21,6 @@ private Q_SLOTS:
   void disconnectedFailureRemainsUntilAcknowledged();
   void cancelledAndIdleRestoreBaseIcon();
   void hoverTextUsesSharedPresentationWithoutAnimationUpdates();
-  void rendersAtTraySizesAndPreservesBaseIcon();
+  void rendersCenteredSpinnerAtTraySizes();
   void terminalBadgesHaveDistinctColors();
 };

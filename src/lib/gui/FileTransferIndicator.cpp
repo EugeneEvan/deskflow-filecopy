@@ -275,26 +275,28 @@ QPixmap FileTransferIndicator::renderPixmap(int logicalSize, qreal devicePixelRa
   result.fill(Qt::transparent);
   QPainter painter(&result);
   painter.setRenderHint(QPainter::Antialiasing);
-  m_baseIcon.paint(&painter, QRect(0, 0, logicalSize, logicalSize));
-  if (m_state == VisualState::Idle)
+  if (m_state == VisualState::Idle) {
+    m_baseIcon.paint(&painter, QRect(0, 0, logicalSize, logicalSize));
     return result;
+  }
 
   const qreal size = logicalSize;
   if (m_state == VisualState::Ready || m_state == VisualState::Completed || m_state == VisualState::Failed) {
+    m_baseIcon.paint(&painter, QRect(0, 0, logicalSize, logicalSize));
     paintBadge(painter, QRectF(size * 0.53, size * 0.53, size * 0.44, size * 0.44), m_state == VisualState::Failed);
     return result;
   }
 
-  const qreal stroke = std::max(1.6, size * 0.075);
+  const qreal stroke = std::max(1.8, size * 0.10);
   const qreal outline = std::max(0.85, size * 0.025);
-  const qreal margin = (stroke + outline) / 2 + 0.5;
+  const qreal margin = size * 0.15;
   const QRectF ring(margin, margin, size - 2 * margin, size - 2 * margin);
   painter.setBrush(Qt::NoBrush);
   painter.setPen(QPen(QColor(112, 125, 140, 65), stroke, Qt::SolidLine, Qt::RoundCap));
   painter.drawEllipse(ring);
 
   // Elapsed time keeps the motion steady even when the GUI skips a timer tick.
-  const qreal phase = m_animationClock.isValid() ? (m_animationClock.elapsed() % 1400) / 1400.0 : 0;
+  const qreal phase = m_animationClock.isValid() ? (m_animationClock.elapsed() % 1100) / 1100.0 : 0;
   const auto arc = [&](qreal start, qreal span, const QColor &color, qreal width) {
     painter.setPen(QPen(color, width, Qt::SolidLine, Qt::RoundCap));
     painter.drawArc(ring, qRound((90 - start) * 16), -qRound(span * 16));
@@ -304,24 +306,11 @@ QPixmap FileTransferIndicator::renderPixmap(int logicalSize, qreal devicePixelRa
     arc(start, span, QColor(52, 62, 74, 220), stroke + outline);
     arc(start, span, QColor(192, 204, 218), stroke);
   };
-  if (m_state == VisualState::Transferring && m_progress > 0) {
-    const qreal span = 360.0 * m_progress / 1000.0;
-    silverArc(0, span);
-    // Sweep within the completed arc only; the actual percentage never advances
-    // because of animation. The highlight enters and leaves at the arc's ends.
-    const qreal length = std::min(span, 55.0);
-    const qreal head = phase * (span + length);
-    const qreal from = std::max(0.0, head - length);
-    const qreal to = std::min(span, head);
-    if (to > from)
-      arc(from, to - from, QColor(250, 252, 255), stroke * 0.7);
-  } else {
-    // Preparation, verification, and the first 0% all show clear activity.
-    const qreal span = 95 + 30 * std::sin(phase * 2 * 3.141592653589793);
-    const qreal start = phase * 360;
-    silverArc(start, span);
-    arc(start + span * 0.65, span * 0.35, QColor(250, 252, 255), stroke * 0.7);
-  }
+  // One centered spinner replaces the asymmetric pointer while busy. Actual
+  // progress remains available in the tooltip, window, and native taskbar.
+  const qreal start = phase * 360;
+  silverArc(start, 110);
+  arc(start + 75, 35, QColor(250, 252, 255), stroke * 0.7);
   return result;
 }
 

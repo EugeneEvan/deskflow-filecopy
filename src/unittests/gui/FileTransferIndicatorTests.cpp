@@ -208,7 +208,7 @@ void FileTransferIndicatorTests::hoverTextUsesSharedPresentationWithoutAnimation
   QCOMPARE(indicator.toolTip(), QStringLiteral("Deskflow FileCopy\nConnected"));
 }
 
-void FileTransferIndicatorTests::rendersAtTraySizesAndPreservesBaseIcon()
+void FileTransferIndicatorTests::rendersCenteredSpinnerAtTraySizes()
 {
   FileTransferIndicator indicator;
   indicator.setBaseIcon(baseIcon());
@@ -219,7 +219,7 @@ void FileTransferIndicatorTests::rendersAtTraySizesAndPreservesBaseIcon()
       QCOMPARE(rendered.size(), QSize(qRound(size * ratio), qRound(size * ratio)));
       QCOMPARE(rendered.devicePixelRatio(), ratio);
       const auto image = rendered.toImage();
-      QCOMPARE(image.pixelColor(image.width() / 2, image.height() / 2), QColor(40, 90, 140));
+      QCOMPARE(image.pixelColor(image.width() / 2, image.height() / 2).alpha(), 0);
     }
   }
 }
