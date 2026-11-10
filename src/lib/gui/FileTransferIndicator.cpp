@@ -86,11 +86,9 @@ struct FileTransferIndicator::NativeTaskbar
 
 FileTransferIndicator::FileTransferIndicator(QObject *parent) : QObject(parent)
 {
-  m_timer.setInterval(80);
-  connect(&m_timer, &QTimer::timeout, this, [this] {
-    m_frame = (m_frame + 1) % 40;
-    updateIcon();
-  });
+  m_timer.setInterval(40);
+  m_timer.setTimerType(Qt::PreciseTimer);
+  connect(&m_timer, &QTimer::timeout, this, &FileTransferIndicator::updateIcon);
 }
 
 FileTransferIndicator::~FileTransferIndicator()
@@ -125,8 +123,8 @@ void FileTransferIndicator::apply(
                        : state == VisualState::Transferring ? std::clamp(metrics.progress, 0, 999)
                                                             : 0;
   const bool appearanceChanged = m_state != state || m_progress != progress;
-  if (m_state != state || m_status.id != status.id)
-    m_frame = 0;
+  if (status.active() && (!m_animationClock.isValid() || m_status.id != status.id))
+    m_animationClock.start();
   m_status = status;
   m_state = state;
   m_progress = progress;
@@ -141,6 +139,7 @@ void FileTransferIndicator::apply(
       m_timer.start();
   } else {
     m_timer.stop();
+    m_animationClock.invalidate();
   }
   if (appearanceChanged) {
     updateIcon();
@@ -191,7 +190,7 @@ void FileTransferIndicator::clear()
   m_status = {};
   m_state = VisualState::Idle;
   m_progress = 0;
-  m_frame = 0;
+  m_animationClock.invalidate();
   m_summary.clear();
   m_detail.clear();
   m_timer.stop();
@@ -286,23 +285,42 @@ QPixmap FileTransferIndicator::renderPixmap(int logicalSize, qreal devicePixelRa
     return result;
   }
 
-  const qreal stroke = std::max(1.25, size * 0.07);
-  const qreal margin = stroke / 2 + 0.5;
+  const qreal stroke = std::max(1.6, size * 0.075);
+  const qreal outline = std::max(0.85, size * 0.025);
+  const qreal margin = (stroke + outline) / 2 + 0.5;
   const QRectF ring(margin, margin, size - 2 * margin, size - 2 * margin);
   painter.setBrush(Qt::NoBrush);
-  painter.setPen(QPen(QColor(102, 113, 126, 45), stroke, Qt::SolidLine, Qt::RoundCap));
+  painter.setPen(QPen(QColor(112, 125, 140, 65), stroke, Qt::SolidLine, Qt::RoundCap));
   painter.drawEllipse(ring);
-  painter.setPen(QPen(QColor(183, 192, 203), stroke, Qt::SolidLine, Qt::RoundCap));
-  if (m_state == VisualState::Transferring) {
-    const int span = qRound(360.0 * 16 * m_progress / 1000.0);
-    painter.drawArc(ring, 90 * 16, -span);
-    // The highlight stays inside the completed arc; it never implies extra progress.
-    const int highlight = std::min(span, 18 * 16);
-    const int alpha = 90 + qRound(90.0 * (1.0 + std::sin(m_frame * 3.141592653589793 / 10.0)) / 2.0);
-    painter.setPen(QPen(QColor(240, 244, 248, alpha), stroke, Qt::SolidLine, Qt::RoundCap));
-    painter.drawArc(ring, 90 * 16 - span + highlight, -highlight);
+
+  // Elapsed time keeps the motion steady even when the GUI skips a timer tick.
+  const qreal phase = m_animationClock.isValid() ? (m_animationClock.elapsed() % 1400) / 1400.0 : 0;
+  const auto arc = [&](qreal start, qreal span, const QColor &color, qreal width) {
+    painter.setPen(QPen(color, width, Qt::SolidLine, Qt::RoundCap));
+    painter.drawArc(ring, qRound((90 - start) * 16), -qRound(span * 16));
+  };
+  const auto silverArc = [&](qreal start, qreal span) {
+    // A graphite edge keeps silver readable on light and dark taskbars.
+    arc(start, span, QColor(52, 62, 74, 220), stroke + outline);
+    arc(start, span, QColor(192, 204, 218), stroke);
+  };
+  if (m_state == VisualState::Transferring && m_progress > 0) {
+    const qreal span = 360.0 * m_progress / 1000.0;
+    silverArc(0, span);
+    // Sweep within the completed arc only; the actual percentage never advances
+    // because of animation. The highlight enters and leaves at the arc's ends.
+    const qreal length = std::min(span, 55.0);
+    const qreal head = phase * (span + length);
+    const qreal from = std::max(0.0, head - length);
+    const qreal to = std::min(span, head);
+    if (to > from)
+      arc(from, to - from, QColor(250, 252, 255), stroke * 0.7);
   } else {
-    painter.drawArc(ring, (90 - m_frame * 9) * 16, -95 * 16);
+    // Preparation, verification, and the first 0% all show clear activity.
+    const qreal span = 95 + 30 * std::sin(phase * 2 * 3.141592653589793);
+    const qreal start = phase * 360;
+    silverArc(start, span);
+    arc(start + span * 0.65, span * 0.35, QColor(250, 252, 255), stroke * 0.7);
   }
   return result;
 }

@@ -89,6 +89,18 @@ void FileTransferIndicatorTests::onlyActiveStatesAnimate()
   }
 }
 
+void FileTransferIndicatorTests::zeroProgressStillShowsActivityWithoutAdvancingProgress()
+{
+  FileTransferIndicator indicator;
+  indicator.setBaseIcon(baseIcon());
+  apply(indicator, "sending", 0);
+  const auto first = indicator.renderPixmap(24).toImage();
+  QTest::qWait(240);
+  QVERIFY(indicator.renderPixmap(24).toImage() != first);
+  QCOMPARE(indicator.progress(), 0);
+  QVERIFY(indicator.toolTip().contains("0%"));
+}
+
 void FileTransferIndicatorTests::failureWaitsForAcknowledgementAndRetryRecovers()
 {
   FileTransferIndicator indicator;

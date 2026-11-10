@@ -8,6 +8,7 @@
 
 #include "FileTransferProgressModel.h"
 
+#include <QElapsedTimer>
 #include <QIcon>
 #include <QObject>
 #include <QTimer>
@@ -77,6 +78,7 @@ private:
   void updateTaskbar();
 
   QTimer m_timer;
+  QElapsedTimer m_animationClock;
   QIcon m_baseIcon;
   QIcon m_icon;
   FileTransferProgressModel::Status m_status;
@@ -88,7 +90,6 @@ private:
   QString m_suppressedId;
   QString m_suppressedState;
   int m_progress = 0;
-  int m_frame = 0;
   bool m_connected = true;
   bool m_suppressTask = false;
   WId m_windowId = 0;

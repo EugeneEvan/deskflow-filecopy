@@ -14,6 +14,7 @@ private Q_SLOTS:
   void preparingAndVerifyingDoNotClaimPercentage();
   void transferUsesRealProgressAndClampsBeforeSuccess();
   void onlyActiveStatesAnimate();
+  void zeroProgressStillShowsActivityWithoutAdvancingProgress();
   void failureWaitsForAcknowledgementAndRetryRecovers();
   void clipboardChangeClearsSuccessWithoutResurrectingIt();
   void disconnectInvalidatesOldStatus();
